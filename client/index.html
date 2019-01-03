@@ -133,7 +133,7 @@
                     <input placeholder="Meeting" id="summary" type="text" v-model.trim="newEventSummary">
                     <label for="summary">Hold for</label>
                   </div>
-                  <div v-if="showMoreSearchOptions" class="col s12 l12">
+                  <div class="col s12 l12" v-bind:class="{hide: !showMoreSearchOptions}">
                     <div class="row">
                       <div class="input-field col s12 l12">
                         <label for="invite" class="active">Invite</label>
