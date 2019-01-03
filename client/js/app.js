@@ -518,7 +518,7 @@ Vue.component('event-collection-item', {
             attendees.push({
               'email': app.ownEmail,
               'responseStatus': 'accepted'
-            })
+            });
           }
         }
         var newEvent = {
@@ -610,13 +610,58 @@ Vue.component('event-collection-item', {
       }, function(error) {
         console.log(error);
       });
+    },
+    book: function() {
+      var event = this;
+      var bookEvent = {
+        calendarId: 'primary',
+        summary: (app.newEventSummary || "reserved"),
+        start: this.event.start,
+        end: this.event.end,
+        status: "confirmed",
+      };
+      var attendees = [];
+      var conferenceSolutionType = app.ownCalendar.conferenceProperties.allowedConferenceSolutionTypes[0];
+      if (app.invite.length > 0) {
+        app.invite.forEach(function (invitee) {
+          if (invitee !== "") {
+            attendees.push({
+              'email': invitee
+            });
+          }
+        });
+        if (attendees.length > 0) {
+          attendees.push({
+            'email': app.ownEmail,
+            'responseStatus': 'accepted'
+          });
+          bookEvent.attendees = attendees;
+          if (conferenceSolutionType) {
+            bookEvent.conferenceDataVersion = 1;
+            bookEvent.conferenceData = {
+              createRequest: {
+                conferenceSolutionKey: {
+                  type: conferenceSolutionType,
+                  requestId: this.event.id + "-" + conferenceSolutionType
+                }
+              }
+            };
+          }
+        }
+      }
+      gapi.client.calendar.events.insert(bookEvent).then(function(response) {
+        event.$emit('updated', event.event);
+      }, function(error) {
+        console.log(error);
+      });
     }
   },
   template: `
     <li class="collection-item" v-bind:class="classes">
       <div v-if="isSlot">
         <div class="secondary-content">
-          <a href="" class="btn-flat teal white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
+          <a href="" class="btn-flat amber white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
+          <a href="" class="btn-flat teal white-text waves-effect waves-light" v-on:click.prevent="book">Book</a>
         </div>
         <span class="title">Available</span>
         <br />

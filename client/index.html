@@ -25,7 +25,7 @@
                 <img v-bind:src="profile.picture" alt="" class="circle responsive-img">
               </a>
               <ul id="profileMenu" class="dropdown-content">
-                <li><span class="grey-text">{{ownCalendar.summary}}</span></li>
+                <li v-if="ownCalendar && ownCalendar.summary"><span class="grey-text">{{ownCalendar.summary}}</span></li>
                 <!--<li><a href=""><i class="material-icons">settings</i>Settings</a></li>-->
                 <li><a href="" v-on:click="disconnect"><i class="material-icons">cloud_off</i>Log out</a></li>
               </ul>
