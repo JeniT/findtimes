@@ -39,12 +39,12 @@
           <h5>Settings</h5>
           <div class="row">
             <div class="input-field col s6">
-              <input type="text" id="startWorkingHours" class="timepicker" v-bind:value="defaultStartTime" placeholder="">
-              <label for="startWorkingHours">Working hours start</label>
+              <input type="text" id="defaultStartTime" class="timepicker" v-bind:value="defaultStartTime" placeholder="">
+              <label for="defaultStartTime" class="active">Working hours start</label>
             </div>
             <div class="input-field col s6">
-              <input type="text" id="endWorkingHours" class="timepicker" v-bind:value="defaultEndTime" placeholder="">
-              <label for="endWorkingHours">Working hours end</label>
+              <input type="text" id="defaultEndTime" class="timepicker" v-bind:value="defaultEndTime" placeholder="">
+              <label for="defaultEndTime" class="active">Working hours end</label>
             </div>
             <div class="input-field col s12 m6">
               <label for="defaultWithin" class="active">Default time period</label>
@@ -129,17 +129,31 @@
                       <option value="420" v-bind:selected="lasting === 420 ? 'selected' : ''">7 hours</option>
                     </select>
                   </div>
-                  <div class="input-field col s12 l12">
-                    <label for="invite" class="active">Invite</label>
-                    <div id="invite" class="chips chips-autocomplete chips-placeholder"></div>
-                  </div>
-                  <div class="input-field col s12 m9 l12">
+                  <div class="input-field col s12 m12 l12">
                     <input placeholder="Meeting" id="summary" type="text" v-model.trim="newEventSummary">
                     <label for="summary">Hold for</label>
                   </div>
-                  <div class="col s12 m3 l12 right-align">
-                    <button type="submit" class="btn btn-flat waves-effect waves-light amber"><i class="material-icons right">search</i>Search</button>
+                  <div v-if="showMoreSearchOptions" class="col s12 l12">
+                    <div class="row">
+                      <div class="input-field col s12 l12">
+                        <label for="invite" class="active">Invite</label>
+                        <div id="invite" class="chips chips-autocomplete chips-placeholder"></div>
+                      </div>
+                      <div class="input-field col s6">
+                        <input type="text" id="startTime" class="timepicker" v-bind:value="startTime" placeholder="">
+                        <label for="startTime" class="active">Find slots after</label>
+                      </div>
+                      <div class="input-field col s6">
+                        <input type="text" id="endTime" class="timepicker" v-bind:value="endTime" placeholder="">
+                        <label for="endTime" class="active">Find slots before</label>
+                      </div>
+                    </div>
                   </div>
+                </div>
+                <div class="right-align">
+                  <a v-if="showMoreSearchOptions" href="" class="btn-flat white" v-on:click.prevent="showMoreSearchOptions = false">Less</a>
+                  <a v-else href="" class="btn-flat white" v-on:click.prevent="showMoreSearchOptions = true">More</a>
+                  <button type="submit" class="btn btn-flat waves-effect waves-light amber"><i class="material-icons right">search</i>Search</button>
                 </div>
               </div>
             </form>

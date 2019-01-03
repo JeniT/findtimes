@@ -742,7 +742,8 @@ var app = new Vue({
     endTime: searchDefaults.endTime,
     holding: [],
     calendars: [],
-    profile: {}
+    profile: {},
+    showMoreSearchOptions: false
   },
   computed: {
     defaultWithin: {
@@ -817,18 +818,20 @@ var app = new Vue({
         if (this.within !== this.defaultWithin) params.push('within=' + this.within);
         if (this.lasting !== this.defaultLasting) params.push('lasting=' + this.lasting);
         if (this.summary !== searchDefaults.summary) params.push('summary=' + encodeURIComponent(this.summary));
-        if (this.startTime !== this.defaultStartTime) params.push('startDate=' + this.startTime);
-        if (this.endTime !== this.defaultEndTime) params.push('startDate=' + this.endTime);
+        if (this.startTime !== this.defaultStartTime) params.push('startTime=' + this.startTime);
+        if (this.endTime !== this.defaultEndTime) params.push('endTime=' + this.endTime);
         if (this.invite.length > 0) params.push('invite=' + this.invite.map((i) => encodeURIComponent(i)).join(","));
         return params.length > 0 ? ("?" + params.join('&')) : "";
       },
       set: function(url) {
         var urlParams = new URL(url).searchParams;
-        this.newEventSummary = urlParams.has('summary') ? urlParams.get('summary') : "";
-        this.searchFromDate = urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : moment().startOf('day').add({ days: 1 });
-        this.lasting = urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : 60;
-        this.within = urlParams.has('within') ? moment.duration(urlParams.get('within')) : moment.duration('P2W');
-        this.invite = urlParams.has('invite') ? urlParams.get('invite').split(",") : [];
+        this.newEventSummary = urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary;
+        this.searchFromDate = urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : searchDefaults.searchFromDate;
+        this.lasting = urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting;
+        this.within = urlParams.has('within') ? moment.duration(urlParams.get('within')) : this.defaultWithin;
+        this.invite = urlParams.has('invite') ? urlParams.get('invite').split(",") : searchDefaults.invite;
+        this.startTime = urlParams.has('startTime') ? urlParams.get('startTime') : this.defaultStartTime;
+        this.endTime = urlParams.has('endTime') ? urlParams.get('endTime') : this.defaultEndTime;
       }
     }
   },
@@ -860,18 +863,34 @@ var app = new Vue({
       autoClose: true,
       container: '#manage'
     };
-    M.Timepicker.init(document.querySelectorAll('#startWorkingHours'), {
+    M.Timepicker.init(document.querySelectorAll('#defaultStartTime'), {
       ...timepickerOpts,
       defaultTime: this.defaultStartTime,
       onCloseEnd: function() {
         app.defaultStartTime = this.time;
       }
     });
-    M.Timepicker.init(document.querySelectorAll('#endWorkingHours'), {
+    M.Timepicker.init(document.querySelectorAll('#defaultEndTime'), {
       ...timepickerOpts,
       defaultTime: this.defaultEndTime,
       onCloseEnd: function() {
         app.defaultEndTime = this.time;
+      }
+    });
+    M.Timepicker.init(document.querySelectorAll('#startTime'), {
+      ...timepickerOpts,
+      defaultTime: this.startTime,
+      onCloseEnd: function() {
+        app.startTime = this.time;
+        app.refresh();
+      }
+    });
+    M.Timepicker.init(document.querySelectorAll('#endTime'), {
+      ...timepickerOpts,
+      defaultTime: this.endTime,
+      onCloseEnd: function() {
+        app.endTime = this.time;
+        app.refresh();
       }
     });
   },
