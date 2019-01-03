@@ -532,6 +532,18 @@ Vue.component('event-collection-item', {
             }
           }
         };
+        var conferenceSolutionType = app.ownCalendar.conferenceProperties.allowedConferenceSolutionTypes[0];
+        if (attendees.length > 0 && conferenceSolutionType) {
+          newEvent.conferenceDataVersion = 1;
+          newEvent.conferenceData = {
+            createRequest: {
+              conferenceSolutionKey: {
+                type: conferenceSolutionType,
+                requestId: event.event.id + "-" + conferenceSolutionType
+              }
+            }
+          };
+        }
         gapi.client.calendar.events.patch(newEvent).then(function(response) {
           gapi.client.calendar.events.list({
             'calendarId': 'primary',
