@@ -298,6 +298,9 @@ Vue.component('day-expandable', {
     },
     numberOfSlots: function() {
       return this.events.reduce((count, event) => count + (event.kind === APP_SLOT_KIND), 0);
+    },
+    numberOfHeldSlots: function() {
+      return this.events.reduce((count, event) => count + (event.extendedProperties !== undefined && event.extendedProperties.private !== undefined && (event.extendedProperties.private.findtimesHolding === "true")), 0);
     }
   },
   methods: {
@@ -344,6 +347,8 @@ Vue.component('day-expandable', {
                 <i v-if="expanded" class="medium material-icons teal-text">expand_less</i>
                 <i v-else class="medium material-icons teal-text">expand_more</i>
                 <b>{{formattedDate}}</b>
+                <span v-if="numberOfHeldSlots > 0" class="new badge orange" 
+                    v-bind:data-badge-caption="'slot' + (numberOfHeldSlots === 1 ? '' : 's') + ' held'">{{numberOfHeldSlots}}</span>
                 <span class="badge" v-bind:class="{ new: numberOfSlots > 0 }" 
                     v-bind:data-badge-caption="'available slot' + (numberOfSlots === 1 ? '' : 's')">{{numberOfSlots}}</span>
             </div>
@@ -383,13 +388,28 @@ Vue.component('event-collection-item', {
       var people = [];
       var ownEvent = this.ownEvent;
       if (this.event.attendees) {
-        people = this.event.attendees.find(attendee => (!ownEvent || !attendee.self) && !attendee.resource);
+        people = this.event.attendees.filter(attendee => (!ownEvent || !attendee.self) && !attendee.resource);
       } else if (!this.ownEvent) {
         people = [{
           email: this.event.calendarId
         }];
       }
       return people;
+    },
+    includesInvitees: function() {
+      var attendees = this.event.attendees;
+      if (attendees) {
+        var check = attendees.concat([app.ownEmail]);
+        return app.invite.every(person => check.some(a => a.email === person));
+      } else {
+        return false;
+      }
+    },
+    onlyInvitees: function() {
+      return this.includesInvitees && app.invite.length === this.otherPeople.length;
+    },
+    peopleTooltip: function() {
+      return 'Existing meeting with ' + app.invite.join(', ') + (!this.onlyInvitees ? ' and others' : '');
     },
     attending: function() {
       var attending = "accepted";
@@ -431,7 +451,11 @@ Vue.component('event-collection-item', {
             'white-text': true,
             'darken-3': true
           };
-          classes[this.color] = true;
+          if (this.holding) {
+            classes['orange'] = true;
+          } else {
+            classes[this.color] = true;
+          }
         }
       }
       classes[this.attending] = true;
@@ -448,7 +472,11 @@ Vue.component('event-collection-item', {
             'text-lighten-3': true
           }
         } else {
-          classes[this.color + "-text"] = true;
+          if (this.holding) {
+            classes['orange-text'] = true;          
+          } else {
+            classes[this.color + "-text"] = true;
+          }
           if (this.event.transparency !== "transparent" || this.attending == "declined") {
             classes["text-lighten-3"] = true;
           }
@@ -477,6 +505,8 @@ Vue.component('event-collection-item', {
       constrainWidth: false,
       hover: true
     });
+    var tooltipped = document.querySelectorAll('.tooltipped');
+    M.Tooltip.init(tooltipped);
   },
   methods: {
     updateAttendance: function(newResponseStatus) {
@@ -669,7 +699,7 @@ Vue.component('event-collection-item', {
     <li class="collection-item" v-bind:class="classes">
       <div v-if="isSlot">
         <div class="secondary-content">
-          <a href="" class="btn-flat amber white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
+          <a href="" class="btn-flat orange white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
           <a href="" class="btn-flat teal white-text waves-effect waves-light" v-on:click.prevent="book">Book</a>
         </div>
         <span class="title">Available</span>
@@ -678,6 +708,14 @@ Vue.component('event-collection-item', {
       </div>
       <div v-else>
         <div v-if="ownEvent" class="secondary-content">
+          <span v-if="onlyInvitees" class="btn-flat tooltipped" data-position="left" 
+            v-bind:data-tooltip="peopleTooltip" v-bind:class="classes">
+            <i class="material-icons">people</i>
+          </span>
+          <span v-if="includesInvitees && !onlyInvitees" class="btn-flat tooltipped" data-position="left" 
+            v-bind:data-tooltip="peopleTooltip" v-bind:class="classes">
+            <i class="material-icons">people_outline</i>
+          </span>
           <a class='dropdown-trigger btn-flat' v-bind:class="classes" href='#' v-bind:data-target='context + "edit" + event.id'>
             <i class="material-icons">more_vert</i>
           </a>
@@ -743,9 +781,11 @@ var app = new Vue({
     holding: [],
     calendars: [],
     profile: {},
-    showMoreSearchOptions: false
   },
   computed: {
+    showMoreSearchOptions: function() {
+      return this.invite.length > 0 || this.startTime !== this.defaultStartTime || this.endTime !== this.defaultEndTime;
+    },
     defaultWithin: {
       get: function() {
         return window.localStorage.getItem('defaultWithin') || searchDefaults.within;

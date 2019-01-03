@@ -37,6 +37,10 @@
 }
 
 #settings ul.select-dropdown {
-    height: 167px !important;
+    height: 170px !important;
     overflow: scroll;
+}
+
+span.badge + span.badge {
+    margin-left: 12px;
 }
