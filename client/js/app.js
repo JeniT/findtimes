@@ -394,7 +394,7 @@ Vue.component('event-collection-item', {
     holding: function() {
       return this.event.extendedProperties &&
         this.event.extendedProperties.private &&
-        this.event.extendedProperties.private.holdingEvent === "true";
+        this.event.extendedProperties.private.findtimesHolding === "true";
     },
     color: function() {
       // TODO get color from calendar if you know it
@@ -502,14 +502,33 @@ Vue.component('event-collection-item', {
         var currentEvent = response.result;
         var oldSummary = currentEvent.summary;
         var newSummary = oldSummary.substr(0, HOLD_PREFIX.length) === HOLD_PREFIX ? oldSummary.substr(HOLD_PREFIX.length) : oldSummary;
+        var attendees = [];
+        if (currentEvent.extendedProperties &&
+            currentEvent.extendedProperties.private &&
+            currentEvent.extendedProperties.private.findtimesInvite) {
+          currentEvent.extendedProperties.private.findtimesInvite.split(',').forEach(function (invitee) {
+            if (invitee !== "") {
+              attendees.push({
+                'email': invitee
+              });
+            }
+          });
+          if (attendees.length > 0) {
+            attendees.push({
+              'email': app.ownEmail,
+              'responseStatus': 'accepted'
+            })
+          }
+        }
         var newEvent = {
           'calendarId': 'primary',
           'eventId': event.event.id,
           'summary': newSummary,
           'status': 'confirmed',
+          'attendees': attendees,
           'extendedProperties': {
             'private': {
-              'holdingEvent': false
+              'findtimesHolding': false
             }
           }
         };
@@ -521,7 +540,7 @@ Vue.component('event-collection-item', {
             'singleEvents': true,
             'orderBy': 'startTime',
             'q': oldSummary,
-            'privateExtendedProperty': 'holdingEvent=true'
+            'privateExtendedProperty': 'findtimesHolding=true'
           }).then(function(response) {
             var heldEvents = response.result.items;
             heldEvents.forEach(function(heldEvent) {
@@ -562,13 +581,14 @@ Vue.component('event-collection-item', {
       var event = this;
       var holdEvent = {
         calendarId: 'primary',
-        summary: "[HOLD] " + (app.newEventSummary || (APP_NAME + " Event")),
+        summary: "[HOLD] " + (app.newEventSummary || "reserved"),
         start: this.event.start,
         end: this.event.end,
         status: "tentative",
         extendedProperties: {
           'private': {
-            holdingEvent: true
+            findtimesHolding: true,
+            findtimesInvite: app.invite.join(',')
           }
         }
       };
@@ -607,7 +627,7 @@ Vue.component('event-collection-item', {
               <a v-if="attending != 'declined'" href="" v-on:click.prevent="decline"><i class="material-icons">event_busy</i>Decline</a>
               <span v-else class="grey-text"><i class="material-icons">event_busy</i>Decline</span>
             </li>
-            <li v-else>
+            <li v-if="ownEvent">
               <a href="" v-on:click.prevent="deleteEvent"><i class="material-icons">delete</i>Delete</a>
             </li>
           </ul>
@@ -640,13 +660,20 @@ var app = new Vue({
     searchFromDate: urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : moment().startOf('day').add({ days: 1 }),
     lasting: urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : 60,
     within: urlParams.has('within') ? urlParams.get('within') : 'P2W',
-    invite: urlParams.has('invite') ? urlParams.get('invite').split(",") : [],
+    invite: urlParams.has('invite') ? (urlParams.get('invite') === "" ? [] : urlParams.get('invite').split(",")) : [],
     ignore: [], // people on the invite list to ignore when fetching calendars (because you don't have access)
     startHour: 9.5,
     endHour: 17,
-    holding: []
+    holding: [],
+    calendars: []
   },
   computed: {
+    ownCalendar: function() {
+      return this.calendars.find((c) => c.primary === true);
+    },
+    ownEmail: function() {
+      return this.ownCalendar.id;
+    },
     searchFrom: {
       get: function() {
         return moment(this.searchFromDate).format('MMM DD, YYYY');
@@ -739,8 +766,9 @@ var app = new Vue({
     getCalendarList: function() {
       gapi.client.calendar.calendarList.list().then(function(response) {
         var data = {};
-        response.result.items.forEach(function(cal) {
-          if (cal.primary === undefined && cal.id.substr(-".calendar.google.com".length) !== ".calendar.google.com") {
+        app.calendars = response.result.items.filter((cal) => cal.id.substr(-".calendar.google.com".length) !== ".calendar.google.com");
+        app.calendars.forEach(function(cal) {
+          if (cal.primary === undefined) {
             data[cal.id] = null
           }
         });
@@ -777,7 +805,7 @@ var app = new Vue({
         'showDeleted': false,
         'singleEvents': true,
         'orderBy': 'startTime',
-        'privateExtendedProperty': 'holdingEvent=true'
+        'privateExtendedProperty': 'findtimesHolding=true'
       }).then(function(response) {
         var holding = [];
         var events = response.result.items;
