@@ -20,15 +20,24 @@
         <div class="nav-wrapper teal">
           <a href="/" class="brand-logo left"><i class="material-icons">event</i>find times</a>
           <ul class="right">
-            <li v-if="connected"><a v-on:click="disconnect" class="waves-effect waves-light btn"><i class="material-icons right">cloud_off</i>Disconnect</a></li>
-            <li v-else><a v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Connect</a></li>
+            <li v-if="connected">
+              <a href="" data-target="profileMenu" class="dropdown-trigger btn-floating btn-medium waves-effect waves-light teal">
+                <img v-bind:src="profile.picture" alt="" class="circle responsive-img">
+              </a>
+              <ul id="profileMenu" class="dropdown-content">
+                <li><span class="grey-text">{{ownCalendar.summary}}</span></li>
+                <!--<li><a href=""><i class="material-icons">settings</i>Settings</a></li>-->
+                <li><a href="" v-on:click="disconnect"><i class="material-icons">cloud_off</i>Log out</a></li>
+              </ul>
+            </li>
+            <li v-else><a v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Log in</a></li>
           </ul>
         </div>
       </nav>
       <div class="container">
         <div class="row">
           <section class="col s12 l5">
-            <h3 class="amber-text text-darken-3">Find dates</h3>
+            <h3 class="amber-text text-darken-3">find</h3>
             <form id="searchForm" v-on:submit.prevent="refresh">
               <div class="card-panel">
                 <div class="row">
@@ -85,14 +94,11 @@
             </form>
           </section>
 
-          <section v-if="holding.length > 0" class="col s12 l7">
-            <h3 class="amber-text text-darken-3">Currently holding</h3>
-            <ul class="collapsible">
+          <section class="col s12 l7">
+            <h3 class="amber-text text-darken-3">manage</h3>
+            <ul v-if="holding.length > 0" class="collapsible">
               <li is="hold-listing-collapsible" v-for="h in holding" :key="h.summary" v-bind:events="h.events" v-on:updated="getHolds"></li>
             </ul>
-          </section>
-
-          <section class="col s12 l7">
             <div v-if="connected">
               <div v-if="showPreviousDate" class="right-align">
                 <a class="btn-flat white teal-text" v-on:click.prevent="addPreviousDaysEvents">Previous day</a>

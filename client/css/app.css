@@ -1,10 +1,9 @@
 .nav-wrapper {
     padding-left: 1em;
+    padding-right: 1em;
 }
 
 #searchForm {
-    margin-top: 24px;
-    margin-bottom: 36px;
     position: relative;
 }
 

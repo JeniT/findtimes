@@ -84,6 +84,7 @@ function initClient() {
 function updateSigninStatus(isSignedIn) {
   app.connected = isSignedIn;
   if (isSignedIn) {
+    app.getUserProfile();
     app.getCalendarList();
     app.getHolds();
     app.refresh();
@@ -677,7 +678,8 @@ var app = new Vue({
     startHour: 9.5,
     endHour: 17,
     holding: [],
-    calendars: []
+    calendars: [],
+    profile: {}
   },
   computed: {
     ownCalendar: function() {
@@ -767,6 +769,13 @@ var app = new Vue({
         previousDate = moment(previousDate).subtract({ days: 1 });
       }
       this.dates = [previousDate].concat(this.dates);
+    },
+    getUserProfile: function() {
+      var profile = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile();
+      this.profile = {
+        name: profile.getGivenName(),
+        picture: profile.getImageUrl()
+      };
     },
     getCalendar: function() {
       gapi.client.calendar.calendarList.get({
