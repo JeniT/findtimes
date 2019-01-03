@@ -29,8 +29,8 @@ var COLORS = {
   11: 'pink'
 };
 
-var APP_NAME = "Appointary";
-var APP_URL = "https://appointary-jenit.c9users.io/";
+var APP_NAME = "find times";
+var APP_URL = "https://findtim.es/";
 var APP_SLOT_KIND = APP_NAME.toLowerCase() + "#slot";
 var HOLD_PREFIX = "[HOLD] ";
 
