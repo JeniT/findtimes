@@ -39,12 +39,45 @@
           <h5>Settings</h5>
           <div class="row">
             <div class="input-field col s6">
-              <input type="text" id="startWorkingHours" class="timepicker" v-bind:value="settings.workingHours.start" placeholder="">
+              <input type="text" id="startWorkingHours" class="timepicker" v-bind:value="defaultStartTime" placeholder="">
               <label for="startWorkingHours">Working hours start</label>
             </div>
             <div class="input-field col s6">
-              <input type="text" id="endWorkingHours" class="timepicker" v-bind:value="settings.workingHours.end" placeholder="">
+              <input type="text" id="endWorkingHours" class="timepicker" v-bind:value="defaultEndTime" placeholder="">
               <label for="endWorkingHours">Working hours end</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <label for="defaultWithin" class="active">Default time period</label>
+              <select id="defaultWithin" v-on:change="setValueFromSelect">
+                <option value="P1W" v-bind:selected="defaultWithin === 'P1W' ? 'selected' : ''">1 week</option>
+                <option value="P2W" v-bind:selected="defaultWithin === 'P2W' ? 'selected' : ''">2 weeks</option>
+                <option value="P3W" v-bind:selected="defaultWithin === 'P3W' ? 'selected' : ''">3 weeks</option>
+                <option value="P4W" v-bind:selected="defaultWithin === 'P4W' ? 'selected' : ''">4 weeks</option>
+                <option value="P1M" v-bind:selected="defaultWithin === 'P1M' ? 'selected' : ''">1 month</option>
+                <option value="P2M" v-bind:selected="defaultWithin === 'P2M' ? 'selected' : ''">2 month</option>
+                <option value="P3M" v-bind:selected="defaultWithin === 'P3M' ? 'selected' : ''">3 month</option>
+              </select>
+            </div>
+            <div class="input-field col s12 m6">
+              <label for="defaultLasting" class="active">Default event duration</label>
+              <select id="defaultLasting" v-on:change="setValueFromSelect">
+                <option value="15" v-bind:selected="defaultLasting === 15 ? 'selected' : ''">15 mins</option>
+                <option value="30" v-bind:selected="defaultLasting === 30 ? 'selected' : ''">30 mins</option>
+                <option value="45" v-bind:selected="defaultLasting === 45 ? 'selected' : ''">45 mins</option>
+                <option value="60" v-bind:selected="defaultLasting === 60 ? 'selected' : ''">1 hour</option>
+                <option value="90" v-bind:selected="defaultLasting === 90 ? 'selected' : ''">1.5 hours</option>
+                <option value="120" v-bind:selected="defaultLasting === 120 ? 'selected' : ''">2 hours</option>
+                <option value="150" v-bind:selected="defaultLasting === 150 ? 'selected' : ''">2.5 hours</option>
+                <option value="180" v-bind:selected="defaultLasting === 180 ? 'selected' : ''">3 hours</option>
+                <option value="210" v-bind:selected="defaultLasting === 210 ? 'selected' : ''">3.5 hours</option>
+                <option value="240" v-bind:selected="defaultLasting === 240 ? 'selected' : ''">4 hours</option>
+                <option value="270" v-bind:selected="defaultLasting === 270 ? 'selected' : ''">4.5 hours</option>
+                <option value="300" v-bind:selected="defaultLasting === 300 ? 'selected' : ''">5 hours</option>
+                <option value="330" v-bind:selected="defaultLasting === 330 ? 'selected' : ''">5.5 hours</option>
+                <option value="360" v-bind:selected="defaultLasting === 360 ? 'selected' : ''">6 hours</option>
+                <option value="390" v-bind:selected="defaultLasting === 390 ? 'selected' : ''">6.5 hours</option>
+                <option value="420" v-bind:selected="defaultLasting === 420 ? 'selected' : ''">7 hours</option>
+              </select>
             </div>
           </div>
         </div>
@@ -65,35 +98,35 @@
                   </div>
                   <div class="input-field col s12 m4 l12">
                     <label for="within" class="active">Within the following</label>
-                    <select id="within" class="browser-default" v-model="within" v-on:change="refresh">
-                  <option value="P1W">1 week</option>
-                  <option value="P2W" selected="selected">2 weeks</option>
-                  <option value="P3W">3 weeks</option>
-                  <option value="P4W">4 weeks</option>
-                  <option value="P1M">1 month</option>
-                  <option value="P2M">2 month</option>
-                  <option value="P3M">3 month</option>
-                </select>
+                    <select id="within" v-on:change="setValueFromSelect">
+                      <option value="P1W" v-bind:selected="within === 'P1W' ? 'selected' : ''">1 week</option>
+                      <option value="P2W" v-bind:selected="within === 'P2W' ? 'selected' : ''">2 weeks</option>
+                      <option value="P3W" v-bind:selected="within === 'P3W' ? 'selected' : ''">3 weeks</option>
+                      <option value="P4W" v-bind:selected="within === 'P4W' ? 'selected' : ''">4 weeks</option>
+                      <option value="P1M" v-bind:selected="within === 'P1M' ? 'selected' : ''">1 month</option>
+                      <option value="P2M" v-bind:selected="within === 'P2M' ? 'selected' : ''">2 month</option>
+                      <option value="P3M" v-bind:selected="within === 'P3M' ? 'selected' : ''">3 month</option>
+                    </select>
                   </div>
                   <div class="input-field col s12 m4 l12">
                     <label for="lasting" class="active">Lasting</label>
-                    <select id="lasting" class="browser-default" v-model="lasting" v-on:change="refresh">
-                      <option value="15">15 mins</option>
-                      <option value="30">30 mins</option>
-                      <option value="45">45 mins</option>
-                      <option value="60" selected="selected">1 hour</option>
-                      <option value="90">1.5 hours</option>
-                      <option value="120">2 hours</option>
-                      <option value="150">2.5 hours</option>
-                      <option value="180">3 hours</option>
-                      <option value="210">3.5 hours</option>
-                      <option value="240">4 hours</option>
-                      <option value="270">4.5 hours</option>
-                      <option value="300">5 hours</option>
-                      <option value="330">5.5 hours</option>
-                      <option value="360">6 hours</option>
-                      <option value="390">6.5 hours</option>
-                      <option value="420">7 hours</option>
+                    <select id="lasting" v-on:change="setValueFromSelect">
+                      <option value="15" v-bind:selected="lasting === 15 ? 'selected' : ''">15 mins</option>
+                      <option value="30" v-bind:selected="lasting === 30 ? 'selected' : ''">30 mins</option>
+                      <option value="45" v-bind:selected="lasting === 45 ? 'selected' : ''">45 mins</option>
+                      <option value="60" v-bind:selected="lasting === 60 ? 'selected' : ''">1 hour</option>
+                      <option value="90" v-bind:selected="lasting === 90 ? 'selected' : ''">1.5 hours</option>
+                      <option value="120" v-bind:selected="lasting === 120 ? 'selected' : ''">2 hours</option>
+                      <option value="150" v-bind:selected="lasting === 150 ? 'selected' : ''">2.5 hours</option>
+                      <option value="180" v-bind:selected="lasting === 180 ? 'selected' : ''">3 hours</option>
+                      <option value="210" v-bind:selected="lasting === 210 ? 'selected' : ''">3.5 hours</option>
+                      <option value="240" v-bind:selected="lasting === 240 ? 'selected' : ''">4 hours</option>
+                      <option value="270" v-bind:selected="lasting === 270 ? 'selected' : ''">4.5 hours</option>
+                      <option value="300" v-bind:selected="lasting === 300 ? 'selected' : ''">5 hours</option>
+                      <option value="330" v-bind:selected="lasting === 330 ? 'selected' : ''">5.5 hours</option>
+                      <option value="360" v-bind:selected="lasting === 360 ? 'selected' : ''">6 hours</option>
+                      <option value="390" v-bind:selected="lasting === 390 ? 'selected' : ''">6.5 hours</option>
+                      <option value="420" v-bind:selected="lasting === 420 ? 'selected' : ''">7 hours</option>
                     </select>
                   </div>
                   <div class="input-field col s12 l12">

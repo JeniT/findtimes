@@ -35,3 +35,8 @@
 .waves-effect.waves-amber .waves-ripple {
     background-color: rgba(255, 193, 7, 0.65);
 }
+
+#settings ul.select-dropdown {
+    height: 167px !important;
+    overflow: scroll;
+}
