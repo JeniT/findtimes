@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Appointary</title>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="css/app.css">
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script type="text/javascript" src="js/moment.js"></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <nav>
+        <div class="nav-wrapper teal">
+          <a href="/" class="brand-logo left"><i class="material-icons">event</i>Appointary</a>
+          <ul class="right">
+            <li v-if="connected"><a v-on:click="disconnect" class="waves-effect waves-light btn"><i class="material-icons right">cloud_off</i>Disconnect</a></li>
+            <li v-else><a v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Connect</a></li>
+          </ul>
+        </div>
+      </nav>
+      <div class="container">
+        <div class="row">
+          <section class="col s12 l5">
+            <h3 class="amber-text text-darken-3">Find dates</h3>
+            <form id="searchForm" v-on:submit.prevent="refresh">
+              <div class="card-panel">
+                <div class="row">
+                  <div class="input-field col s12 m4 l12">
+                    <input type="text" id="after" class="datepicker" v-model="searchFrom" placeholder="">
+                    <label for="after">After date</label>
+                  </div>
+                  <div class="input-field col s12 m4 l12">
+                    <label for="within" class="active">Within the following</label>
+                    <select id="within" class="browser-default" v-model="within" v-on:change="refresh">
+                  <option value="P1W">1 week</option>
+                  <option value="P2W" selected="selected">2 weeks</option>
+                  <option value="P3W">3 weeks</option>
+                  <option value="P4W">4 weeks</option>
+                  <option value="P1M">1 month</option>
+                  <option value="P2M">2 month</option>
+                  <option value="P3M">3 month</option>
+                </select>
+                  </div>
+                  <div class="input-field col s12 m4 l12">
+                    <label for="lasting" class="active">Lasting</label>
+                    <select id="lasting" class="browser-default" v-model="lasting" v-on:change="refresh">
+                      <option value="15">15 mins</option>
+                      <option value="30">30 mins</option>
+                      <option value="45">45 mins</option>
+                      <option value="60" selected="selected">1 hour</option>
+                      <option value="90">1.5 hours</option>
+                      <option value="120">2 hours</option>
+                      <option value="150">2.5 hours</option>
+                      <option value="180">3 hours</option>
+                      <option value="210">3.5 hours</option>
+                      <option value="240">4 hours</option>
+                      <option value="270">4.5 hours</option>
+                      <option value="300">5 hours</option>
+                      <option value="330">5.5 hours</option>
+                      <option value="360">6 hours</option>
+                      <option value="390">6.5 hours</option>
+                      <option value="420">7 hours</option>
+                    </select>
+                  </div>
+                  <div class="input-field col s12 l12">
+                    <label for="invite" class="active">Invite</label>
+                    <div id="invite" class="chips chips-autocomplete chips-placeholder"></div>
+                  </div>
+                  <div class="input-field col s12 m9 l12">
+                    <input placeholder="Meeting" id="summary" type="text" v-model.trim="newEventSummary">
+                    <label for="summary">Hold for</label>
+                  </div>
+                  <div class="col s12 m3 l12 right-align">
+                    <button type="submit" class="btn btn-flat waves-effect waves-light amber"><i class="material-icons right">search</i>Search</button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <section v-if="holding.length > 0" class="col s12 l7">
+            <h3 class="amber-text text-darken-3">Currently holding</h3>
+            <ul class="collapsible">
+              <li is="hold-listing-collapsible" v-for="h in holding" :key="h.summary" v-bind:events="h.events" v-on:updated="getHolds"></li>
+            </ul>
+          </section>
+
+          <section class="col s12 l7">
+            <div v-if="connected">
+              <div v-if="showPreviousDate" class="right-align">
+                <a class="btn-flat white teal-text" v-on:click.prevent="addPreviousDaysEvents">Previous day</a>
+              </div>
+              <ul class="collapsible expandable">
+                <li is="day-expandable" v-for="date in dates" :key="date.formattedDate" v-bind:date="date" v-on:updated="getHolds"></li>
+              </ul>
+              <div class="right-align">
+                <a class="btn-flat white teal-text" v-on:click.prevent="addNextDaysEvents">Next day</a>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </body>
+  <!-- development version, includes helpful console warnings -->
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script async defer src="https://apis.google.com/js/api.js">
+  </script>
+  <script async defer type="text/javascript" src="js/app.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
+
+</html>

@@ -1,0 +1,38 @@
+.nav-wrapper {
+    padding-left: 1em;
+}
+
+#searchForm {
+    margin-top: 24px;
+    margin-bottom: 36px;
+    position: relative;
+}
+
+.dropdown-content li>span>i {
+    height: inherit;
+    line-height: inherit;
+    float: left;
+    margin: 0 24px 0 0;
+    width: 24px
+}
+
+.declined {
+    text-decoration: line-through;
+}
+
+.transparent .title {
+    font-style: italic;
+    font-weight: 100;
+}
+
+.slot {
+    border-right: #009688 12px solid;
+}
+
+.collapsible-body .collection {
+    position: inherit;
+}
+
+.waves-effect.waves-amber .waves-ripple {
+    background-color: rgba(255, 193, 7, 0.65);
+}
