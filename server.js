@@ -10,7 +10,7 @@ var http = require( "http" ),
 app.use( express.static( appDir ) );
 
 app.get( "*", function( req, res ) {
-    res.sendfile( pathUtils.resolve( appDir, "index.html" ) );
+    res.sendFile( pathUtils.resolve( appDir, "index.html" ) );
 } );
 
 http.createServer( app ).listen( PORT, function() {

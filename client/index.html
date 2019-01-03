@@ -26,7 +26,7 @@
               </a>
               <ul id="profileMenu" class="dropdown-content">
                 <li v-if="ownCalendar && ownCalendar.summary"><span class="grey-text">{{ownCalendar.summary}}</span></li>
-                <!--<li><a href=""><i class="material-icons">settings</i>Settings</a></li>-->
+                <li><a href="#settings" class="modal-trigger"><i class="material-icons">settings</i>Settings</a></li>
                 <li><a href="" v-on:click="disconnect"><i class="material-icons">cloud_off</i>Log out</a></li>
               </ul>
             </li>
@@ -34,6 +34,24 @@
           </ul>
         </div>
       </nav>
+      <div id="settings" class="modal">
+        <div class="modal-content">
+          <h5>Settings</h5>
+          <div class="row">
+            <div class="input-field col s6">
+              <input type="text" id="startWorkingHours" class="timepicker" v-bind:value="settings.workingHours.start" placeholder="">
+              <label for="startWorkingHours">Working hours start</label>
+            </div>
+            <div class="input-field col s6">
+              <input type="text" id="endWorkingHours" class="timepicker" v-bind:value="settings.workingHours.end" placeholder="">
+              <label for="endWorkingHours">Working hours end</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <a href="#!" class="modal-close btn-flat">Close</a>
+        </div>
+      </div>
       <div class="container">
         <div class="row">
           <section class="col s12 l5">
@@ -94,7 +112,7 @@
             </form>
           </section>
 
-          <section class="col s12 l7">
+          <section id="manage" class="col s12 l7">
             <h3 class="amber-text text-darken-3">manage</h3>
             <ul v-if="holding.length > 0" class="collapsible">
               <li is="hold-listing-collapsible" v-for="h in holding" :key="h.summary" v-bind:events="h.events" v-on:updated="getHolds"></li>

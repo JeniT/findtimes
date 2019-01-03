@@ -295,8 +295,10 @@ Vue.component('day-expandable', {
   },
   methods: {
     refresh: function(propagate = true) {
-      var start = moment(this.date).startOf('day').add({ hours: app.startHour });
-      var end = moment(this.date).startOf('day').add({ hours: app.endHour });
+      var startTime = app.settings.workingHours.start.split(':').map(i => Number.parseInt(i));
+      var endTime = app.settings.workingHours.end.split(':').map(i => Number.parseInt(i));
+      var start = moment(this.date).startOf('day').add({ hours: startTime[0], minutes: startTime[1] });
+      var end = moment(this.date).startOf('day').add({ hours: endTime[0], minutes: endTime[1] });
       var duration = app.lasting;
       var dayExpandable = this;
       fetchCalendarEvents(app.invite.concat(['primary']), start, end, function(events) {
@@ -720,8 +722,12 @@ var app = new Vue({
     within: urlParams.has('within') ? urlParams.get('within') : 'P2W',
     invite: urlParams.has('invite') ? (urlParams.get('invite') === "" ? [] : urlParams.get('invite').split(",")) : [],
     ignore: [], // people on the invite list to ignore when fetching calendars (because you don't have access)
-    startHour: 9.5,
-    endHour: 17,
+    settings: {
+      workingHours: {
+        start: window.localStorage.getItem('workingHoursStart') || "09:30",
+        end: window.localStorage.getItem('workingHoursEnd') || "17:00"
+      }
+    },
     holding: [],
     calendars: [],
     profile: {}
@@ -772,6 +778,34 @@ var app = new Vue({
     M.Chips.init(invite, {
       placeholder: 'Enter emails',
       data: this.invite.map(function(i) { return { tag: i }; })
+    });
+    var modals = document.querySelectorAll('#settings');
+    M.Modal.init(modals, {
+      onCloseEnd: function() {
+        app.refresh();
+      }
+    });
+    
+    var timepickerOpts = {
+      twelveHour: false,
+      autoClose: true,
+      container: '#manage'
+    };
+    M.Timepicker.init(document.querySelectorAll('#startWorkingHours'), {
+      ...timepickerOpts,
+      defaultTime: this.settings.workingHours.start,
+      onCloseEnd: function() {
+        app.settings.workingHours.start = this.time;
+        window.localStorage.setItem('workingHoursStart', this.time);
+      }
+    });
+    M.Timepicker.init(document.querySelectorAll('#endWorkingHours'), {
+      ...timepickerOpts,
+      defaultTime: this.settings.workingHours.end,
+      onCloseEnd: function() {
+        app.settings.workingHours.end = this.time;
+        window.localStorage.setItem('workingHoursEnd', this.time);
+      }
     });
   },
   methods: {
