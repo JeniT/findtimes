@@ -122,7 +122,29 @@ function initMap(response) {
 }
 
 function calculateTravelTime(options, callback) {
-  if (mapsService) {
+  var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
+  if (cachedTravelTimes) {
+    cachedTravelTimes = JSON.parse(cachedTravelTimes);
+  } else {
+    cachedTravelTimes = [];
+  }
+  var travelTimes = [];
+  var arrivalDayTime = options.arrivalTime ? moment(options.arrivalTime).format('ddd HH:mm') : undefined;
+  var departureDayTime = options.departureTime ? moment(options.departureTime).format('ddd HH:mm') : undefined;
+  options.origins.forEach(origin =>
+    options.destinations.forEach(function(destination) {
+      var cachedTravelTime = cachedTravelTimes.find(t =>
+        t.origin === origin && t.destination === destination &&
+        (arrivalDayTime ? t.arrivalDayTime === arrivalDayTime : t.departureDayTime === departureDayTime)
+      );
+      if (cachedTravelTime) {
+        travelTimes.push(cachedTravelTime);
+      }
+    })
+  );
+  if (travelTimes.length === options.origins.length * options.destinations.length) {
+    callback.call(this, travelTimes);
+  } else if (mapsService) {
     mapsService.getDistanceMatrix({
       origins: options.origins,
       destinations: options.destinations,
@@ -132,22 +154,34 @@ function calculateTravelTime(options, callback) {
         departureTime: options.departureTime
       },
     }, function(response) {
-      var travelTimes = [];
+      var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
+      if (cachedTravelTimes) {
+        cachedTravelTimes = JSON.parse(cachedTravelTimes);
+      } else {
+        cachedTravelTimes = [];
+      }
       response.originAddresses.forEach(function(origin, i) {
         response.destinationAddresses.forEach(function(destination, j) {
           var element = response.rows[i].elements[j];
           var travelTime;
           if (element.status === "OK") {
             travelTime = {
+              updated: new Date(),
               origin: origin,
               destination: destination,
               duration: moment.duration(element.duration.value, 'seconds')
             }
+            if (arrivalDayTime) {
+              travelTime['arrivalDayTime'] = arrivalDayTime;
+            } else if (departureDayTime) {
+              travelTime['departureDayTime'] = departureDayTime;
+            }
+            cachedTravelTimes.unshift(travelTime);
           } else if (element.status === "NOT_FOUND") {
             travelTime = {
               origin: origin === "" ? undefined : origin,
               destination: destination === "" ? undefined : destination
-            }
+            };
           } else {
             console.log('Error getting travel times: ' + element.status);
             console.log('origin: ' + origin);
@@ -155,10 +189,15 @@ function calculateTravelTime(options, callback) {
             console.log(response);
           }
           travelTimes.push(travelTime);
-        })
-      })
+        });
+      });
+      var weekAgo = moment().subtract({ weeks: 1 });
+      cachedTravelTimes = cachedTravelTimes.filter(t => moment(t.updated).isAfter(weekAgo));
+      window.localStorage.setItem('cachedTravelTimes', JSON.stringify(cachedTravelTimes));
       callback.call(this, travelTimes);
     });
+  } else {
+    return travelTimes;
   }
 }
 
@@ -814,7 +853,8 @@ var searchDefaults = {
   within: 'P2W',
   invite: [],
   startTime: "09:30",
-  endTime: "17:00"
+  endTime: "17:00",
+  address: ""
 };
 var app = new Vue({
   el: '#app',
@@ -828,6 +868,7 @@ var app = new Vue({
     within: searchDefaults.within,
     invite: urlParams.has('invite') ? (urlParams.get('invite') === "" ? [] : urlParams.get('invite').split(",")) : searchDefaults.invite,
     ignore: [], // people on the invite list to ignore when fetching calendars (because you don't have access)
+    address: urlParams.has('address') ? urlParams.get('address') : this.workAddress,
     startTime: searchDefaults.startTime,
     endTime: searchDefaults.endTime,
     holding: [],
@@ -877,6 +918,7 @@ var app = new Vue({
         if (this.startTime !== this.defaultStartTime) params.push('startTime=' + this.startTime);
         if (this.endTime !== this.defaultEndTime) params.push('endTime=' + this.endTime);
         if (this.invite.length > 0) params.push('invite=' + this.invite.map((i) => encodeURIComponent(i)).join(","));
+        if (this.address !== this.workAddress) params.push('address=' + encodeURIComponent(this.address));
         return params.length > 0 ? ("?" + params.join('&')) : "";
       },
       set: function(url) {
@@ -888,6 +930,7 @@ var app = new Vue({
         this.invite = urlParams.has('invite') ? urlParams.get('invite').split(",") : searchDefaults.invite;
         this.startTime = urlParams.has('startTime') ? urlParams.get('startTime') : this.defaultStartTime;
         this.endTime = urlParams.has('endTime') ? urlParams.get('endTime') : this.defaultEndTime;
+        this.address = urlParams.has('address') ? urlParams.get('address') : this.workAddress;
       }
     }
   },
@@ -912,6 +955,12 @@ var app = new Vue({
       if (newMode !== oldMode) {
         this.updateCommuteTimes();
       }
+    },
+    commuteStartTime: function(newValue, oldValue) {
+      window.localStorage.setItem('commuteStartTime', newValue);
+    },
+    commuteEndTime: function(newValue, oldValue) {
+      window.localStorage.setItem('commuteEndTime', newValue);
     },
     defaultStartTime: function(newTime, oldTime) {
       window.localStorage.setItem('defaultStartTime', newTime);
@@ -949,6 +998,8 @@ var app = new Vue({
     this.defaultEndTime = window.localStorage.getItem('defaultEndTime') || this.defaultEndTime;
     this.defaultWithin = window.localStorage.getItem('defaultWithin') || this.defaultWithin;
     this.defaultLasting = Number.parseInt(window.localStorage.getItem('defaultLasting')) || this.defaultLasting;
+    this.commuteStartTime = window.localStorage.getItem('commuteStartTime') || this.commuteStartTime;
+    this.commuteEndTime = window.localStorage.getItem('commuteEndTime') || this.commuteEndTime;
 
     this.within = urlParams.has('within') ? urlParams.get('within') : this.defaultWithin;
     this.lasting = urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting;
@@ -974,7 +1025,6 @@ var app = new Vue({
     M.Tooltip.init(tooltipped);
 
     var dropdowns = document.querySelectorAll('.dropdown-trigger');
-    console.log(dropdowns);
     M.Dropdown.init(dropdowns, {
       constrainWidth: false,
       hover: true
@@ -1165,7 +1215,7 @@ var app = new Vue({
               app.invalidWorkAddress = false;
             }
             if (travelTime.duration) {
-              app.commuteStartTime = moment(start).subtract(travelTime.duration).startOf('minute').format('HH:mm');
+              app.commuteStartTime = moment(start).subtract(moment.duration(travelTime.duration)).startOf('minute').format('HH:mm');
             }
           }
         });
@@ -1191,7 +1241,7 @@ var app = new Vue({
               app.homeAddress = travelTime.destination;
               app.invalidHomeAddress = false;
             }
-            app.commuteEndTime = moment(end).add(travelTime.duration).startOf('minute').add({ minutes: 1 }).format('HH:mm');
+            app.commuteEndTime = moment(end).add(moment.duration(travelTime.duration)).startOf('minute').add({ minutes: 1 }).format('HH:mm');
           }
         });
       }
