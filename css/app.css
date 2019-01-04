@@ -36,11 +36,6 @@
     background-color: rgba(255, 193, 7, 0.65);
 }
 
-#settings ul.select-dropdown {
-    height: 170px !important;
-    overflow: scroll;
-}
-
 span.badge + span.badge {
     margin-left: 12px;
 }

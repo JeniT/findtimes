@@ -3,10 +3,12 @@
 /* global moment */
 /* global M */
 /* global URL */
+/* global google */
 
 // Client ID and API key from the Developer Console
 var CLIENT_ID = '580782451843-c3hia6gsl157hihk25tl4cqoil3gpi3u.apps.googleusercontent.com';
 var API_KEY = 'AIzaSyAXqF7CUsCRncsTULLaHqNBtTnrtT-e1ic';
+var MAPS_API_KEY = 'AIzaSyAkGSArjk9-AqZ8D__hViDeNr4leO6Q_PU';
 
 // Array of API discovery doc URLs for APIs used by the quickstart
 var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
@@ -110,6 +112,47 @@ function handleAuthClick(event) {
  */
 function handleSignoutClick(event) {
   gapi.auth2.getAuthInstance().signOut();
+}
+
+var mapsService;
+
+function initMap(response) {
+  mapsService = new google.maps.DistanceMatrixService();
+  app.updateCommuteTimes();
+}
+
+function calculateTravelTime(options, callback) {
+  if (mapsService) {
+    mapsService.getDistanceMatrix({
+      origins: options.origins,
+      destinations: options.destinations,
+      travelMode: options.travelMode ? options.travelMode.toUpperCase() : app.travelMode,
+      transitOptions: {
+        arrivalTime: options.arrivalTime,
+        departureTime: options.departureTime
+      },
+    }, function(response) {
+      var travelTimes = [];
+      response.originAddresses.forEach(function(origin, i) {
+        response.destinationAddresses.forEach(function(destination, j) {
+          var element = response.rows[i].elements[j];
+          if (element.status === "OK") {
+            var travelTime = {
+              origin: origin,
+              destination: destination,
+              duration: moment.duration(element.duration.value, 'seconds')
+            }
+          } else {
+            console.log('Error getting travel times: ' + element.status);
+            console.log('origin: ' + origin);
+            console.log('destination: ' + destination);
+          }
+          travelTimes.push(travelTime);
+        })
+      })
+      callback.call(this, travelTimes);
+    });
+  }
 }
 
 function fetchCalendarEvents(calendarIds, start, end, success, error, events = []) {
@@ -473,7 +516,7 @@ Vue.component('event-collection-item', {
           }
         } else {
           if (this.holding) {
-            classes['orange-text'] = true;          
+            classes['orange-text'] = true;
           } else {
             classes[this.color + "-text"] = true;
           }
@@ -544,9 +587,9 @@ Vue.component('event-collection-item', {
         var newSummary = oldSummary.substr(0, HOLD_PREFIX.length) === HOLD_PREFIX ? oldSummary.substr(HOLD_PREFIX.length) : oldSummary;
         var attendees = [];
         if (currentEvent.extendedProperties &&
-            currentEvent.extendedProperties.private &&
-            currentEvent.extendedProperties.private.findtimesInvite) {
-          currentEvent.extendedProperties.private.findtimesInvite.split(',').forEach(function (invitee) {
+          currentEvent.extendedProperties.private &&
+          currentEvent.extendedProperties.private.findtimesInvite) {
+          currentEvent.extendedProperties.private.findtimesInvite.split(',').forEach(function(invitee) {
             if (invitee !== "") {
               attendees.push({
                 'email': invitee
@@ -662,7 +705,7 @@ Vue.component('event-collection-item', {
       var attendees = [];
       var conferenceSolutionType = app.ownCalendar.conferenceProperties.allowedConferenceSolutionTypes[0];
       if (app.invite.length > 0) {
-        app.invite.forEach(function (invitee) {
+        app.invite.forEach(function(invitee) {
           if (invitee !== "") {
             attendees.push({
               'email': invitee
@@ -781,59 +824,19 @@ var app = new Vue({
     holding: [],
     calendars: [],
     profile: {},
+    travelTimeEnabled: true,
+    homeAddress: window.localStorage.getItem('homeAddress') || "",
+    workAddress: window.localStorage.getItem('workAddress') || "",
+    travelMode: window.localStorage.getItem('travelMode') || "transit",
+    commuteStartTime: searchDefaults.startTime,
+    commuteEndTime: searchDefaults.endTime,
+    showMoreSearchOptions: false,
+    defaultStartTime: searchDefaults.startTime,
+    defaultEndTime: searchDefaults.endTime,
+    defaultWithin: searchDefaults.within,
+    defaultLasting: searchDefaults.lasting
   },
   computed: {
-    showMoreSearchOptions: function() {
-      return this.invite.length > 0 || this.startTime !== this.defaultStartTime || this.endTime !== this.defaultEndTime;
-    },
-    defaultWithin: {
-      get: function() {
-        return window.localStorage.getItem('defaultWithin') || searchDefaults.within;
-      },
-      set: function(value) {
-        var oldValue = window.localStorage.getItem('defaultWithin') || searchDefaults.within;
-        window.localStorage.setItem('defaultWithin', value);
-        if (this.within === oldValue) {
-          this.within = value;
-        }
-      }
-    },
-    defaultLasting: {
-      get: function() {
-        return window.localStorage.getItem('defaultLasting') ? Number.parseInt(window.localStorage.getItem('defaultLasting')) : searchDefaults.lasting;
-      },
-      set: function(value) {
-        var oldValue = Number.parseInt(window.localStorage.getItem('defaultLasting')) || searchDefaults.lasting;
-        window.localStorage.setItem('defaultLasting', value);
-        if (this.lasting === oldValue) {
-          this.lasting = value;
-        }
-      }
-    },
-    defaultStartTime: {
-      get: function() {
-        return window.localStorage.getItem('defaultStartTime') || searchDefaults.startTime;
-      },
-      set: function(value) {
-        var oldValue = window.localStorage.getItem('defaultStartTime') || searchDefaults.startTime;
-        window.localStorage.setItem('defaultStartTime', value);
-        if (this.startTime === oldValue) {
-          this.startTime = value;
-        }
-      }
-    },
-    defaultEndTime: {
-      get: function() {
-        return window.localStorage.getItem('defaultEndTime') || searchDefaults.endTime;
-      },
-      set: function(value) {
-        var oldValue = window.localStorage.getItem('defaultEndTime') || searchDefaults.endTime;
-        window.localStorage.setItem('defaultEndTime', value);
-        if (this.endTime === oldValue) {
-          this.endTime = value;
-        }
-      }
-    },
     ownCalendar: function() {
       return this.calendars.find((c) => c.primary === true);
     },
@@ -876,16 +879,71 @@ var app = new Vue({
     }
   },
   watch: {
-    searchFromDate: function(oldDate, newDate) {
+    searchFromDate: function(newDate, oldDate) {
       this.refresh();
-    }
+    },
+    homeAddress: function(newAddress, oldAddress) {
+      window.localStorage.setItem('homeAddress', newAddress);
+      if (newAddress !== oldAddress) {
+        this.updateCommuteTimes();
+      }
+    },
+    workAddress: function(newAddress, oldAddress) {
+      window.localStorage.setItem('workAddress', newAddress);
+      if (newAddress !== oldAddress) {
+        this.updateCommuteTimes();
+      }
+    },
+    travelMode: function(newMode, oldMode) {
+      window.localStorage.setItem('travelMode', newMode);
+      if (newMode !== oldMode) {
+        this.updateCommuteTimes();
+      }
+    },
+    defaultStartTime: function(newTime, oldTime) {
+      window.localStorage.setItem('defaultStartTime', newTime);
+      if (newTime !== oldTime) {
+        this.updateCommuteTimes();
+        if (this.startTime === oldTime) {
+          this.startTime = newTime;
+        }
+      }
+    },
+    defaultEndTime: function(newTime, oldTime) {
+      window.localStorage.setItem('defaultEndTime', newTime);
+      if (newTime !== oldTime) {
+        this.updateCommuteTimes();
+        if (this.endTime === oldTime) {
+          this.endTime = newTime;
+        }
+      }
+    },
+    defaultWithin: function(newValue, oldValue) {
+      window.localStorage.setItem('defaultWithin', newValue);
+      if (newValue !== oldValue && this.within === oldValue) {
+        this.within = newValue;
+      }
+    },
+    defaultLasting: function(newValue, oldValue) {
+      window.localStorage.setItem('defaultLasting', newValue);
+      if (newValue !== oldValue && this.lasting === oldValue) {
+        this.lasting = newValue;
+      }
+    },
   },
   mounted: function() {
+    this.defaultStartTime = window.localStorage.getItem('defaultStartTime') || this.defaultStartTime;
+    this.defaultEndTime = window.localStorage.getItem('defaultEndTime') || this.defaultEndTime;
+    this.defaultWithin = window.localStorage.getItem('defaultWithin') || this.defaultWithin;
+    this.defaultLasting = Number.parseInt(window.localStorage.getItem('defaultLasting')) || this.defaultLasting;
+
     this.within = urlParams.has('within') ? urlParams.get('within') : this.defaultWithin;
     this.lasting = urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting;
     this.startTime = urlParams.has('startTime') ? urlParams.get('startTime') : this.defaultStartTime;
     this.endTime = urlParams.has('endTime') ? urlParams.get('endTime') : this.defaultEndTime;
-    
+
+    this.showMoreSearchOptions = this.invite.length > 0 || this.startTime !== this.defaultStartTime || this.endTime !== this.defaultEndTime;
+
     var invite = document.querySelectorAll('.chips');
     M.Chips.init(invite, {
       placeholder: 'Enter emails',
@@ -897,7 +955,7 @@ var app = new Vue({
         app.refresh();
       }
     });
-    
+
     var timepickerOpts = {
       twelveHour: false,
       autoClose: true,
@@ -1052,6 +1110,33 @@ var app = new Vue({
       }, function(error) {
         console.log(error);
       });
+    },
+    updateCommuteTimes: function() {
+      if (this.homeAddress !== "" && this.workAddress !== "") {
+        var startTime = this.defaultStartTime.split(':').map(i => Number.parseInt(i));
+        var endTime = this.defaultEndTime.split(':').map(i => Number.parseInt(i));
+        var commuteDay = moment().startOf('week').add({ 'week': 1, 'days': 1 });
+        var start = moment(commuteDay).add({ hours: startTime[0], minutes: startTime[1] });
+        var end = moment(commuteDay).add({ hours: endTime[0], minutes: endTime[1] });
+        calculateTravelTime({
+          origins: [this.homeAddress],
+          destinations: [this.workAddress],
+          travelMode: this.travelMode,
+          arrivalTime: start.toDate()
+        }, function(travelTimes) {
+          var travelTime = travelTimes[0];
+          app.commuteStartTime = moment(start).subtract(travelTime.duration).startOf('minute').format('HH:mm');
+        });
+        calculateTravelTime({
+          destinations: [this.homeAddress],
+          origins: [this.workAddress],
+          travelMode: this.travelMode,
+          departureTime: end.toDate()
+        }, function(travelTimes) {
+          var travelTime = travelTimes[0];
+          app.commuteEndTime = moment(end).add(travelTime.duration).startOf('minute').add({ minutes: 1 }).format('HH:mm');
+        });
+      }
     },
     updateEventViews: function(event) {
       var date = moment(event.start.dateTime).startOf('day');
