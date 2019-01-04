@@ -20,7 +20,7 @@
         <div class="nav-wrapper teal">
           <a href="/" class="brand-logo left"><i class="material-icons">event</i>find times</a>
           <ul class="right">
-            <li v-if="connected">
+            <li v-bind:class="{hide: !connected}">
               <a href="" data-target="profileMenu" class="dropdown-trigger btn-floating btn-medium waves-effect waves-light teal">
                 <img v-bind:src="profile.picture" alt="" class="circle responsive-img">
               </a>
@@ -30,7 +30,9 @@
                 <li><a href="" v-on:click="disconnect"><i class="material-icons">cloud_off</i>Log out</a></li>
               </ul>
             </li>
-            <li v-else><a v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Log in</a></li>
+            <li v-bind:class="{hide: connected}">
+              <a v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Log in</a>
+            </li>
           </ul>
         </div>
       </nav>
@@ -93,21 +95,33 @@
                 <option value="driving" v-bind:selected="travelMode === 'driving' ? 'selected' : ''">Drive</option>
               </select>
             </div>
-            <div class="input-field col s9">
-              <input placeholder="" id="homeAddress" type="text" v-model.trim="homeAddress">
+            <div class="input-field col s10 m8">
+              <input placeholder="" id="homeAddress" type="text" v-model.trim="homeAddress" v-bind:class="{invalid: invalidHomeAddress}">
               <label for="homeAddress">Home location</label>
             </div>
-            <div class="input-field col s3">
-              <input placeholder="" id="commuteStartTime" type="text" v-model="commuteStartTime" disabled>
-              <label for="commuteStartTime">Leave home at</label>
+            <div class="input-field col s2 m1">
+              <a v-if="checkHomeAddress || invalidHomeAddress" v-on:click.prevent="updateCommuteTimes" class="right tooltipped" href="#!" data-position="left" data-tooltip="Check home address">
+                <i class="material-icons" v-bind:class="invalidHomeAddress ? 'red-text' : 'teal-text'">location_on</i>
+              </a>
+              <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>
             </div>
-            <div class="input-field col s9">
-              <input placeholder="" id="workAddress" type="text" v-model.trim="workAddress">
+            <div class="input-field col s12 m3">
+              <input placeholder="" id="commuteStartTime" type="text" v-model="commuteStartTime" disabled>
+              <label for="commuteStartTime">Leave home</label>
+            </div>
+            <div class="input-field col s10 m8">
+              <input placeholder="" id="workAddress" type="text" v-model.trim="workAddress" v-bind:class="{invalid: invalidWorkAddress}">
               <label for="workAddress">Work location</label>
             </div>
-            <div class="input-field col s3">
+            <div class="input-field col s2 m1">
+              <a v-if="checkWorkAddress || invalidWorkAddress" v-on:click.prevent="updateCommuteTimes" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check work address">
+                <i class="material-icons" v-bind:class="invalidWorkAddress ? 'red-text' : 'teal-text'">location_on</i>
+              </a>
+              <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>
+            </div>
+            <div class="input-field col s12 m3">
               <input placeholder="" id="commuteEndTime" type="text" v-model.trim="commuteEndTime" disabled>
-              <label for="commuteEndTime">Arrive home at</label>
+              <label for="commuteEndTime">Arrive home</label>
             </div>
           </div>
         </div>

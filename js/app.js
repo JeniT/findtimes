@@ -136,16 +136,23 @@ function calculateTravelTime(options, callback) {
       response.originAddresses.forEach(function(origin, i) {
         response.destinationAddresses.forEach(function(destination, j) {
           var element = response.rows[i].elements[j];
+          var travelTime;
           if (element.status === "OK") {
-            var travelTime = {
+            travelTime = {
               origin: origin,
               destination: destination,
               duration: moment.duration(element.duration.value, 'seconds')
+            }
+          } else if (element.status === "NOT_FOUND") {
+            travelTime = {
+              origin: origin === "" ? undefined : origin,
+              destination: destination === "" ? undefined : destination
             }
           } else {
             console.log('Error getting travel times: ' + element.status);
             console.log('origin: ' + origin);
             console.log('destination: ' + destination);
+            console.log(response);
           }
           travelTimes.push(travelTime);
         })
@@ -260,11 +267,12 @@ Vue.component('hold-listing-collapsible', {
     }
   },
   mounted: function() {
-    var collapsibles = document.querySelectorAll('.collapsible');
+    var collapsibles = this.$el.querySelectorAll('.collapsible');
     M.Collapsible.init(collapsibles, {
       accordion: true
     });
-    var modals = document.querySelectorAll('.modal');
+
+    var modals = this.$el.querySelectorAll('.modal');
     M.Modal.init(modals);
   },
   methods: {
@@ -543,12 +551,13 @@ Vue.component('event-collection-item', {
     }
   },
   mounted: function() {
-    var dropdowns = document.querySelectorAll('.dropdown-trigger');
+    var dropdowns = this.$el.querySelectorAll('.dropdown-trigger');
     M.Dropdown.init(dropdowns, {
       constrainWidth: false,
       hover: true
     });
-    var tooltipped = document.querySelectorAll('.tooltipped');
+
+    var tooltipped = this.$el.querySelectorAll('.tooltipped');
     M.Tooltip.init(tooltipped);
   },
   methods: {
@@ -826,7 +835,11 @@ var app = new Vue({
     profile: {},
     travelTimeEnabled: true,
     homeAddress: window.localStorage.getItem('homeAddress') || "",
+    checkHomeAddress: false,
+    invalidHomeAddress: false,
     workAddress: window.localStorage.getItem('workAddress') || "",
+    checkWorkAddress: false,
+    invalidWorkAddress: false,
     travelMode: window.localStorage.getItem('travelMode') || "transit",
     commuteStartTime: searchDefaults.startTime,
     commuteEndTime: searchDefaults.endTime,
@@ -885,13 +898,13 @@ var app = new Vue({
     homeAddress: function(newAddress, oldAddress) {
       window.localStorage.setItem('homeAddress', newAddress);
       if (newAddress !== oldAddress) {
-        this.updateCommuteTimes();
+        this.checkHomeAddress = true;
       }
     },
     workAddress: function(newAddress, oldAddress) {
       window.localStorage.setItem('workAddress', newAddress);
       if (newAddress !== oldAddress) {
-        this.updateCommuteTimes();
+        this.checkWorkAddress = true;
       }
     },
     travelMode: function(newMode, oldMode) {
@@ -949,11 +962,22 @@ var app = new Vue({
       placeholder: 'Enter emails',
       data: this.invite.map(function(i) { return { tag: i }; })
     });
+
     var modals = document.querySelectorAll('#settings');
     M.Modal.init(modals, {
       onCloseEnd: function() {
         app.refresh();
       }
+    });
+
+    var tooltipped = document.querySelectorAll('.tooltipped');
+    M.Tooltip.init(tooltipped);
+
+    var dropdowns = document.querySelectorAll('.dropdown-trigger');
+    console.log(dropdowns);
+    M.Dropdown.init(dropdowns, {
+      constrainWidth: false,
+      hover: true
     });
 
     var timepickerOpts = {
@@ -1124,8 +1148,26 @@ var app = new Vue({
           travelMode: this.travelMode,
           arrivalTime: start.toDate()
         }, function(travelTimes) {
-          var travelTime = travelTimes[0];
-          app.commuteStartTime = moment(start).subtract(travelTime.duration).startOf('minute').format('HH:mm');
+          if (travelTimes.length > 0) {
+            var travelTime = travelTimes[0];
+            app.checkHomeAddress = false;
+            app.checkWorkAddress = false;
+            if (travelTime.origin === undefined) {
+              app.invalidHomeAddress = true;
+            } else if (travelTime.origin !== app.homeAddress) {
+              app.homeAddress = travelTime.origin;
+              app.invalidHomeAddress = false;
+            }
+            if (travelTime.destination === undefined) {
+              app.invalidWorkAddress = true;
+            } else if (travelTime.destination !== app.workAddress) {
+              app.workAddress = travelTime.destination;
+              app.invalidWorkAddress = false;
+            }
+            if (travelTime.duration) {
+              app.commuteStartTime = moment(start).subtract(travelTime.duration).startOf('minute').format('HH:mm');
+            }
+          }
         });
         calculateTravelTime({
           destinations: [this.homeAddress],
@@ -1133,8 +1175,24 @@ var app = new Vue({
           travelMode: this.travelMode,
           departureTime: end.toDate()
         }, function(travelTimes) {
-          var travelTime = travelTimes[0];
-          app.commuteEndTime = moment(end).add(travelTime.duration).startOf('minute').add({ minutes: 1 }).format('HH:mm');
+          if (travelTimes.length > 0) {
+            var travelTime = travelTimes[0];
+            app.checkHomeAddress = false;
+            app.checkWorkAddress = false;
+            if (travelTime.origin === undefined) {
+              app.invalidWorkAddress = true;
+            } else if (travelTime.origin !== app.workAddress) {
+              app.workAddress = travelTime.origin;
+              app.invalidWorkAddress = false;
+            }
+            if (travelTime.destination === undefined) {
+              app.invalidHomeAddress = true;
+            } else if (travelTime.destination !== app.homeAddress) {
+              app.homeAddress = travelTime.destination;
+              app.invalidHomeAddress = false;
+            }
+            app.commuteEndTime = moment(end).add(travelTime.duration).startOf('minute').add({ minutes: 1 }).format('HH:mm');
+          }
         });
       }
     },
