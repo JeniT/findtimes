@@ -1064,9 +1064,17 @@ var app = new Vue({
         console.log(error);
       });
     },
-    updateTravelTimes: function() {
+    updateTravelTimes: function(refresh = false) {
       var commuteDay = moment().startOf('week').add({ week: 1, days: 1 });
-      if (this.address !== "" && this.address !== this.workAddress) {
+      if (this.address === "" || this.address === this.workAddress) {
+        this.commuteToAddress = this.defaultStartTime;
+        this.commuteFromAddress = this.defaultEndTime;
+        this.travelToAddress = moment.duration(0);
+        this.travelFromAddress = moment.duration(0);
+        if (refresh) {
+          app.refresh();
+        }
+      } else {
         if (this.homeAddress !== "") {
           var start = timeOnDay(commuteDay, this.commuteStartTime);
           var end = timeOnDay(commuteDay, this.commuteEndTime);
@@ -1097,34 +1105,37 @@ var app = new Vue({
                 app.commuteToAddress = moment(start).add(moment.duration(travelTime.duration)).endOf('minute').format('HH:mm');
               }
             }
-          });
-          // work out latest time could leave address
-          calculateTravelTime({
-            destinations: [this.homeAddress],
-            origins: [this.address],
-            travelMode: this.travelMode,
-            arrivalTime: end.toDate()
-          }, function(travelTimes) {
-            if (travelTimes.length > 0) {
-              var travelTime = travelTimes[0];
-              app.checkHomeAddress = false;
-              app.checkAddress = false;
-              if (travelTime.origin === undefined) {
-                app.invalidAddress = true;
-              } else if (travelTime.origin !== app.Address) {
-                app.Address = travelTime.origin;
-                app.invalidAddress = false;
+            // work out latest time could leave address
+            calculateTravelTime({
+              destinations: [app.homeAddress],
+              origins: [app.address],
+              travelMode: app.travelMode,
+              arrivalTime: end.toDate()
+            }, function(travelTimes) {
+              if (travelTimes.length > 0) {
+                var travelTime = travelTimes[0];
+                app.checkHomeAddress = false;
+                app.checkAddress = false;
+                if (travelTime.origin === undefined) {
+                  app.invalidAddress = true;
+                } else if (travelTime.origin !== app.Address) {
+                  app.Address = travelTime.origin;
+                  app.invalidAddress = false;
+                }
+                if (travelTime.destination === undefined) {
+                  app.invalidHomeAddress = true;
+                } else if (travelTime.destination !== app.homeAddress) {
+                  app.homeAddress = travelTime.destination;
+                  app.invalidHomeAddress = false;
+                }
+                if (travelTime.duration) {
+                  app.commuteFromAddress = moment(end).subtract(moment.duration(travelTime.duration)).startOf('minute').format('HH:mm');
+                }
               }
-              if (travelTime.destination === undefined) {
-                app.invalidHomeAddress = true;
-              } else if (travelTime.destination !== app.homeAddress) {
-                app.homeAddress = travelTime.destination;
-                app.invalidHomeAddress = false;
+              if (refresh) {
+                app.refresh();
               }
-              if (travelTime.duration) {
-                app.commuteFromAddress = moment(end).subtract(moment.duration(travelTime.duration)).startOf('minute').format('HH:mm');
-              }
-            }
+            });
           });
         }
         if (this.workAddress !== "") {
@@ -1158,34 +1169,37 @@ var app = new Vue({
                 app.travelToAddress = moment.duration(travelTime.duration);
               }
             }
-          });
-          // work out latest time could leave address
-          calculateTravelTime({
-            destinations: [this.workAddress],
-            origins: [this.address],
-            travelMode: this.travelMode,
-            departureTime: end.toDate()
-          }, function(travelTimes) {
-            if (travelTimes.length > 0) {
-              var travelTime = travelTimes[0];
-              app.checkWorkAddress = false;
-              app.checkAddress = false;
-              if (travelTime.origin === undefined) {
-                app.invalidAddress = true;
-              } else if (travelTime.origin !== app.Address) {
-                app.Address = travelTime.origin;
-                app.invalidAddress = false;
+            // work out latest time could leave address
+            calculateTravelTime({
+              destinations: [app.workAddress],
+              origins: [app.address],
+              travelMode: app.travelMode,
+              departureTime: end.toDate()
+            }, function(travelTimes) {
+              if (travelTimes.length > 0) {
+                var travelTime = travelTimes[0];
+                app.checkWorkAddress = false;
+                app.checkAddress = false;
+                if (travelTime.origin === undefined) {
+                  app.invalidAddress = true;
+                } else if (travelTime.origin !== app.Address) {
+                  app.Address = travelTime.origin;
+                  app.invalidAddress = false;
+                }
+                if (travelTime.destination === undefined) {
+                  app.invalidWorkAddress = true;
+                } else if (travelTime.destination !== app.workAddress) {
+                  app.workAddress = travelTime.destination;
+                  app.invalidWorkAddress = false;
+                }
+                if (travelTime.duration) {
+                  app.travelFromAddress = moment.duration(travelTime.duration);
+                }
               }
-              if (travelTime.destination === undefined) {
-                app.invalidWorkAddress = true;
-              } else if (travelTime.destination !== app.workAddress) {
-                app.workAddress = travelTime.destination;
-                app.invalidWorkAddress = false;
+              if (refresh) {
+                app.refresh();
               }
-              if (travelTime.duration) {
-                app.travelFromAddress = moment.duration(travelTime.duration);
-              }
-            }
+            });
           });
         }
       }

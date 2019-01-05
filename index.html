@@ -183,7 +183,7 @@
                         <label for="eventLocation">Location</label>
                       </div>
                       <div class="input-field col s1">
-                        <a v-if="checkAddress || invalidAddress" v-on:click.prevent="updateTravelTimes" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check address">
+                        <a v-if="checkAddress || invalidAddress" v-on:click.prevent="updateTravelTimes(true)" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check address">
                           <i class="material-icons" v-bind:class="invalidAddress ? 'red-text' : 'teal-text'">location_on</i>
                         </a>
                         <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>

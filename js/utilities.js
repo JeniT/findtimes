@@ -297,10 +297,6 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
     eventAddress = app.homeAddress; // where you want to end up
     eveningCommute = true;
   }
-  if (startAddress === undefined) {
-    console.log(events);
-    console.log(eventIndex);
-  }
   var slotEvents = [];
   var slotTravelToEnds = start;
   if (app.address !== startAddress) {
@@ -345,7 +341,8 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
         slotStarts.minute(60); // moment helpfully bubbles this up to the hour
       }
     }
-    var slotEnds = moment(slotStarts).add({ minutes: duration });
+    var earliestSlotEnds = moment(slotStarts).add({ minutes: duration });
+    var slotEnds = moment(earliestSlotEnds);
     if (slotEnds.isAfter(end) || slotEnds.isAfter(timeOnDay(start, app.commuteFromAddress))) {
       // jump to creating commute events
     } else if (slotEnds.isSameOrBefore(eventStarts)) {
@@ -363,10 +360,10 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       // time to get there
       var canMakeItToNextEvent = eventAddress === app.address;
       if (eventAddress === app.homeAddress) {
-        canMakeItToNextEvent = slotEnds.isBefore(timeOnDay(start, app.commuteFromAddress));
+        canMakeItToNextEvent = slotEnds.isSameOrBefore(timeOnDay(start, app.commuteFromAddress));
         slotEnds = timeOnDay(start, app.commuteFromAddress);
       } else if (eventAddress === app.workAddress) {
-        canMakeItToNextEvent = (slotEnds).add(app.travelFromAddress).isBefore(eventStarts);
+        canMakeItToNextEvent = (slotEnds).add(app.travelFromAddress).isSameOrBefore(eventStarts);
         slotEnds = (slotEnds).add(app.travelFromAddress);
       } else if (events.length > 0 && events[eventIndex].travelTo) {
         var travelFromAddress = events[eventIndex].travelTo.find(t => originalAddresses(t.origin).includes(app.address));
@@ -378,7 +375,19 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
           slotEnds = eventStarts;
         }
       }
-      if (canMakeItToNextEvent) {
+      if (slotEnds.second() !== 0) slotStarts.second(0);
+      if (slotEnds.minute() % 15) {
+        if (slotEnds.minute() < 15) {
+          slotEnds.minute(0);
+        } else if (slotEnds.minute() < 30) {
+          slotEnds.minute(15);
+        } else if (slotEnds.minute() < 45) {
+          slotEnds.minute(30);
+        } else {
+          slotEnds.minute(45);
+        }
+      }
+      if (canMakeItToNextEvent && slotEnds.isSameOrAfter(earliestSlotEnds)) {
         slot.end.dateTime = slotEnds;
         slotEvents.push(slot);
         slotEvents.forEach((e, i) => events.splice(eventIndex + i, 0, e));
