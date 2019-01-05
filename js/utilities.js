@@ -402,8 +402,11 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       // don't have to work out exactly how you're going to get there yet;
       // that'll be handled by the standard travel-adding code, just whether there's
       // time to get there
-      var canMakeItToNextEvent = eventAddress === app.address;
-      if (eventAddress === app.homeAddress) {
+      var canMakeItToNextEvent = false;
+      if (eventAddress === app.address) {
+        canMakeItToNextEvent = true;
+        slotEnds = moment(eventStarts);
+      } else if (eventAddress === app.homeAddress) {
         canMakeItToNextEvent = slotEnds.isSameOrBefore(timeOnDay(start, app.commuteFromAddress));
         slotEnds = timeOnDay(start, app.commuteFromAddress);
       } else if (eventAddress === app.workAddress) {
@@ -416,7 +419,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
           slotEnds = travelFromAddress.leave;
         } else {
           canMakeItToNextEvent = true; // assume you can travel instantaneously
-          slotEnds = eventStarts;
+          slotEnds = moment(eventStarts);
         }
       }
       if (slotEnds.second() !== 0) slotStarts.second(0);

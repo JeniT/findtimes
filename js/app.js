@@ -783,7 +783,7 @@ var app = new Vue({
       return this.calendars.find((c) => c.primary === true);
     },
     ownEmail: function() {
-      return this.ownCalendar.id;
+      return this.ownCalendar ? this.ownCalendar.id : "";
     },
     searchFrom: {
       get: function() {
