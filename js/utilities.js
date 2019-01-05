@@ -12,16 +12,9 @@ var APP_TRAVEL_KIND = APP_NAME.replace(' ', '').toLowerCase() + "#travel";
 function calculateTravelTime(options, callback) {
   var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
   var placeAliases = window.localStorage.getItem('placeAliases');
-  if (cachedTravelTimes) {
-    cachedTravelTimes = JSON.parse(cachedTravelTimes);
-  } else {
-    cachedTravelTimes = [];
-  }
-  if (placeAliases) {
-    placeAliases = JSON.parse(placeAliases);
-  } else {
-    placeAliases = {};
-  }
+  cachedTravelTimes = cachedTravelTimes ? JSON.parse(cachedTravelTimes) : [];
+  placeAliases = placeAliases ? JSON.parse(placeAliases) : {};
+
   var travelTimes = [];
   var travelMode = options.travelMode || app.travelMode;
   var origins = options.origins.map(o => [o].concat(placeAliases[o]) || [o]);
@@ -42,6 +35,7 @@ function calculateTravelTime(options, callback) {
       }
     })
   );
+
   if (travelTimes.length === options.origins.length * options.destinations.length) {
     callback.call(this, travelTimes);
   } else if (mapsService) {
@@ -90,16 +84,23 @@ function calculateTravelTime(options, callback) {
       } else {
         cachedTravelTimes = [];
       }
+
+      // TODO: detect when the response origin addresses contain things like
+      // empty strings (because of locations like 'Kitchen') and filter out
+      // requests for those kinds of locations
+
       response.originAddresses.forEach(function(origin, i) {
         response.destinationAddresses.forEach(function(destination, j) {
           var element = response.rows[i].elements[j];
-          var travelTime;
+          var travelTime = {
+            updated: new Date(),
+            origin: origin,
+            destination: destination,
+            mode: travelMode,
+          };
           if (element.status === "OK") {
             travelTime = {
-              updated: new Date(),
-              origin: origin,
-              destination: destination,
-              mode: travelMode,
+              ...travelTime,
               duration: moment.duration(element.duration.value, 'seconds')
             }
             if (arrivalDayTime) {
@@ -110,14 +111,14 @@ function calculateTravelTime(options, callback) {
             cachedTravelTimes.unshift(travelTime);
           } else if (element.status === "NOT_FOUND") {
             travelTime = {
+              ...travelTime,
               origin: origin === "" ? undefined : origin,
               destination: destination === "" ? undefined : destination
             };
+            cachedTravelTimes.unshift(travelTime);
           } else {
-            console.log('Error getting travel times: ' + element.status);
-            console.log('origin: ' + origin);
-            console.log('destination: ' + destination);
             console.log(response);
+            cachedTravelTimes.unshift(travelTime);
           }
           travelTimes.push(travelTime);
         });
@@ -155,29 +156,37 @@ function fetchEventTravel(events, places, success, index = 0) {
   if (event.start.dateTime) {
     var eventAddress = eventLocation(event);
     if (eventAddress !== app.workAddress) {
-      otherPlaces = places.filter(p => p !== "" && p !== eventAddress);
+      otherPlaces = places.filter(p => p !== eventAddress);
       calculateTravelTime({
         origins: otherPlaces,
         destinations: [eventAddress],
         arrivalTime: event.start.dateTime
       }, function(travelTo) {
-        event.travelTo = travelTo.map(function(t) {
-          return {
-            origin: t.origin,
-            leave: moment(event.start.dateTime).subtract(moment.duration(t.duration))
-          }
-        });
+        if (travelTo) {
+          event.travelTo = travelTo.map(function(t) {
+            if (t && t.origin && t.duration) {
+              return {
+                origin: t.origin,
+                leave: moment(event.start.dateTime).subtract(moment.duration(t.duration))
+              };
+            }
+          });
+        }
         calculateTravelTime({
           origins: [eventAddress],
           destinations: otherPlaces,
           departureTime: event.end.dateTime
         }, function(travelFrom) {
-          event.travelFrom = travelFrom.map(function(t) {
-            return {
-              destination: t.destination,
-              arrive: moment(event.end.dateTime).add(moment.duration(t.duration))
-            }
-          });
+          if (travelFrom) {
+            event.travelFrom = travelFrom.map(function(t) {
+              if (t && t.destination && t.duration) {
+                return {
+                  destination: t.destination,
+                  arrive: moment(event.end.dateTime).add(moment.duration(t.duration))
+                }
+              }
+            });
+          }
           fetchEventTravel(events, places, success, index + 1);
         });
       });
@@ -208,6 +217,7 @@ function fetchCalendarEvents(calendarIds, start, end, success, error, events = [
         if (!places.includes(app.workAddress)) places.push(app.workAddress);
         if (!places.includes(app.homeAddress)) places.push(app.homeAddress);
         if (!places.includes(app.address)) places.push(app.address);
+        places = places.filter(p => p !== "");
         fetchEventTravel(es, places, function(es) {
           events = events.concat(es);
           fetchCalendarEvents(calendarIds, start, end, success, error, events);
@@ -240,13 +250,13 @@ function sortEvents(e1, e2) {
     return -1;
   } else if (end1 > end2) {
     return 1;
-  } else if (e1.calendarId === 'primary') {
-    return -1;
-  } else if (e2.calendarId === 'primary') {
-    return 1;
   } else if (id1 < id2) {
     return -1;
   } else if (id1 > id2) {
+    return 1;
+  } else if (e1.calendarId === 'primary') {
+    return -1;
+  } else if (e2.calendarId === 'primary') {
     return 1;
   } else {
     return 0;
