@@ -48,6 +48,11 @@ function calculateTravelTime(options, callback) {
         departureTime: moment(options.departureTime).toDate()
       },
     }, function(response) {
+      if (!response) {
+        console.log('null response to travel time request');
+        console.log(options);
+        return callback.call(this, []);
+      }
       var placeAliases = window.localStorage.getItem('placeAliases');
       if (placeAliases) {
         placeAliases = JSON.parse(placeAliases);
@@ -218,6 +223,8 @@ function fetchCalendarEvents(calendarIds, start, end, success, error, events = [
         if (!places.includes(app.homeAddress)) places.push(app.homeAddress);
         if (!places.includes(app.address)) places.push(app.address);
         places = places.filter(p => p !== "");
+        places = places.sort();
+        places = places.filter((p, i) => i === 0 || places[i - 1] !== p);
         fetchEventTravel(es, places, function(es) {
           events = events.concat(es);
           fetchCalendarEvents(calendarIds, start, end, success, error, events);

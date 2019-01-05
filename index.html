@@ -100,7 +100,7 @@
               <label for="homeAddressField">Home location</label>
             </div>
             <div class="input-field col s2 m1">
-              <a v-if="checkHomeAddress || invalidHomeAddress" v-on:click.prevent="updateCommuteTimes" class="right tooltipped" href="#!" data-position="left" data-tooltip="Check home address">
+              <a v-if="(checkHomeAddress || invalidHomeAddress) && workAddress !== ''" v-on:click.prevent="updateCommuteTimes" class="right tooltipped" href="#!" data-position="left" data-tooltip="Check home address">
                 <i class="material-icons" v-bind:class="invalidHomeAddress ? 'red-text' : 'teal-text'">location_on</i>
               </a>
               <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>
@@ -114,7 +114,7 @@
               <label for="workAddressField">Work location</label>
             </div>
             <div class="input-field col s2 m1">
-              <a v-if="checkWorkAddress || invalidWorkAddress" v-on:click.prevent="updateCommuteTimes" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check work address">
+              <a v-if="(checkWorkAddress || invalidWorkAddress) && homeAddress !== ''" v-on:click.prevent="updateCommuteTimes" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check work address">
                 <i class="material-icons" v-bind:class="invalidWorkAddress ? 'red-text' : 'teal-text'">location_on</i>
               </a>
               <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>
@@ -183,7 +183,7 @@
                         <label for="eventLocation">Location</label>
                       </div>
                       <div class="input-field col s1">
-                        <a v-if="checkAddress || invalidAddress" v-on:click.prevent="updateTravelTimes(true)" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check address">
+                        <a v-if="(checkAddress || invalidAddress) && homeAddress !== '' && workAddress !== ''" v-on:click.prevent="updateTravelTimes(true)" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check address">
                           <i class="material-icons" v-bind:class="invalidAddress ? 'red-text' : 'teal-text'">location_on</i>
                         </a>
                         <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>
