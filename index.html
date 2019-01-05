@@ -178,6 +178,24 @@
                         <label for="invite" class="active">Invite</label>
                         <div id="invite" class="chips chips-autocomplete chips-placeholder"></div>
                       </div>
+                      <div class="input-field col s11">
+                        <input type="text" id="eventLocation" v-model.trim="address">
+                        <label for="eventLocation">Location</label>
+                      </div>
+                      <div class="input-field col s1">
+                        <a v-if="checkAddress || invalidAddress" v-on:click.prevent="updateTravelTimes" class="right tooltipped" href="#!" data-position="left" data-tooltipped="Check address">
+                          <i class="material-icons" v-bind:class="invalidAddress ? 'red-text' : 'teal-text'">location_on</i>
+                        </a>
+                        <span v-else class="right"><i class="material-icons grey-text">location_on</i></span>
+                      </div>
+                      <div class="input-field col s6">
+                        <input placeholder="" id="commuteToAddress" type="text" v-model.trim="commuteToAddress" disabled>
+                        <label for="commuteToAddress">Earliest arrival</label>
+                      </div>
+                      <div class="input-field col s6">
+                        <input placeholder="" id="commuteFromAddress" type="text" v-model.trim="commuteFromAddress" disabled>
+                        <label for="commuteFromAddress">Latest departure</label>
+                      </div>
                       <div class="input-field col s6">
                         <input type="text" id="startTime" class="timepicker" v-bind:value="startTime" placeholder="">
                         <label for="startTime" class="active">Find slots after</label>
@@ -185,10 +203,6 @@
                       <div class="input-field col s6">
                         <input type="text" id="endTime" class="timepicker" v-bind:value="endTime" placeholder="">
                         <label for="endTime" class="active">Find slots before</label>
-                      </div>
-                      <div class="input-field col s12">
-                        <input type="text" id="eventLocation" v-model.trim="address">
-                        <label for="eventLocation">Location</label>
                       </div>
                     </div>
                   </div>
@@ -226,6 +240,7 @@
   <!-- development version, includes helpful console warnings -->
   <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
   <script src="https://apis.google.com/js/api.js"></script>
+  <script type="text/javascript" src="js/utilities.js"></script>
   <script type="text/javascript" src="js/app.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAkGSArjk9-AqZ8D__hViDeNr4leO6Q_PU&callback=initMap" async defer></script>
 
