@@ -12,15 +12,24 @@ var APP_TRAVEL_KIND = APP_NAME.replace(' ', '').toLowerCase() + "#travel";
 function calculateTravelTime(options, callback) {
   var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
   var placeAliases = window.localStorage.getItem('placeAliases');
+  var badPlaces = window.localStorage.getItem('badPlaces');
   cachedTravelTimes = cachedTravelTimes ? JSON.parse(cachedTravelTimes) : [];
   placeAliases = placeAliases ? JSON.parse(placeAliases) : {};
+  badPlaces = badPlaces ? JSON.parse(badPlaces) : [];
 
-  var travelTimes = [];
-  var travelMode = options.travelMode || app.travelMode;
+  options.origins = options.origins.filter(o => !badPlaces.includes(o));
+  options.destinations = options.destinations.filter(o => !badPlaces.includes(o));
+  if (options.origins.length === 0 || options.destinations.length === 0) {
+    return callback.call(this, []);
+  }
+
   var origins = options.origins.map(o => [o].concat(placeAliases[o]) || [o]);
   var destinations = options.destinations.map(d => [d].concat(placeAliases[d]) || [d]);
   var arrivalDayTime = options.arrivalTime ? moment(options.arrivalTime).format('ddd HH:mm') : undefined;
   var departureDayTime = options.departureTime ? moment(options.departureTime).format('ddd HH:mm') : undefined;
+  var travelMode = options.travelMode || app.travelMode;
+
+  var travelTimes = [];
   origins.forEach(originAliases =>
     destinations.forEach(function(destinationAliases) {
       // assume that travelling between the same two places at the same time 
@@ -53,35 +62,57 @@ function calculateTravelTime(options, callback) {
         console.log(options);
         return callback.call(this, []);
       }
+
       var placeAliases = window.localStorage.getItem('placeAliases');
-      if (placeAliases) {
-        placeAliases = JSON.parse(placeAliases);
-      } else {
-        placeAliases = {};
-      }
-      var originAliases = placeAliases[options.origins[0]];
-      var responseOrigin = response.originAddresses[0];
-      var destinationAliases = placeAliases[options.destinations[0]];
-      var responseDestination = response.destinationAddresses[0];
-      if (options.origins.length === 1 && options.origins[0] !== response.originAddresses[0]) {
-        if (originAliases) {
-          if (!originAliases.includes(responseOrigin)) {
-            originAliases.push(responseOrigin);
+      placeAliases = placeAliases ? JSON.parse(placeAliases) : {};
+      var badPlaces = window.localStorage.getItem('badPlaces');
+      badPlaces = badPlaces ? JSON.parse(badPlaces) : [];
+
+      if (response.rows.every(row => row.elements.every(element => element.status === "ZERO_RESULTS"))) {
+        if (options.origins.length === 1) {
+          if (!badPlaces.includes(options.origins[0])) {
+            badPlaces.push(options.origins[0]);
           }
-        } else {
-          placeAliases[options.origins[0]] = response.originAddresses;
+        }
+        if (options.destinations.length === 1) {
+          if (!badPlaces.includes(options.destinations[0])) {
+            badPlaces.push(options.destinations[0]);
+          }
         }
       }
-      if (options.destinations.length === 1 && options.destinations[0] !== response.destinationAddresses[0]) {
-        if (destinationAliases) {
-          if (!destinationAliases.includes(responseDestination)) {
-            destinationAliases.push(responseDestination);
+
+      response.originAddresses.forEach(function(responseAddress, i) {
+        var requestAddress = options.origins[i];
+        var aliases = placeAliases[requestAddress];
+        if (responseAddress === "") {
+          badPlaces.push(requestAddress);
+        } else if (responseAddress !== requestAddress) {
+          if (aliases) {
+            if (!aliases.includes(responseAddress)) {
+              aliases.push(responseAddress);
+            }
+          } else {
+            placeAliases[requestAddress] = [responseAddress];
           }
-        } else {
-          placeAliases[destinations[0]] = response.destinationAddresses;
         }
-      }
+      });
+      response.destinationAddresses.forEach(function(responseAddress, i) {
+        var requestAddress = options.destinations[i];
+        var aliases = placeAliases[requestAddress];
+        if (responseAddress === "") {
+          badPlaces.push(requestAddress);
+        } else if (responseAddress !== requestAddress) {
+          if (aliases) {
+            if (!aliases.includes(responseAddress)) {
+              aliases.push(responseAddress);
+            }
+          } else {
+            placeAliases[requestAddress] = [responseAddress];
+          }
+        }
+      });
       window.localStorage.setItem('placeAliases', JSON.stringify(placeAliases));
+      window.localStorage.setItem('badPlaces', JSON.stringify(badPlaces));
 
       var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
       if (cachedTravelTimes) {
@@ -89,10 +120,6 @@ function calculateTravelTime(options, callback) {
       } else {
         cachedTravelTimes = [];
       }
-
-      // TODO: detect when the response origin addresses contain things like
-      // empty strings (because of locations like 'Kitchen') and filter out
-      // requests for those kinds of locations
 
       response.originAddresses.forEach(function(origin, i) {
         response.destinationAddresses.forEach(function(destination, j) {
