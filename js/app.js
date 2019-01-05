@@ -139,7 +139,7 @@ Vue.component('hold-listing-collapsible', {
     }
   },
   mounted: function() {
-    var collapsibles = this.$el.querySelectorAll('.collapsible');
+    var collapsibles = document.querySelectorAll('.collapsible');
     M.Collapsible.init(collapsibles, {
       accordion: true
     });
@@ -305,6 +305,9 @@ Vue.component('event-collection-item', {
     },
     allDay: function() {
       return this.event.start.dateTime === undefined;
+    },
+    desiredDuration: function() {
+      return moment(this.event.end.dateTime).diff(this.event.start.dateTime, 'minutes') === app.lasting;
     },
     organizer: function() {
       if (this.event.organizer) {
@@ -572,13 +575,13 @@ Vue.component('event-collection-item', {
         console.log(error);
       });
     },
-    hold: function() {
+    hold: function(extent = 'all') {
       var event = this;
       var holdEvent = {
         calendarId: 'primary',
         summary: "[HOLD] " + (app.newEventSummary || "reserved"),
-        start: this.event.start,
-        end: this.event.end,
+        start: extent === 'all' || extent === 'start' ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
+        end: extent === 'all' || extent === 'end' ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
         status: "tentative",
         extendedProperties: {
           'private': {
@@ -593,13 +596,13 @@ Vue.component('event-collection-item', {
         console.log(error);
       });
     },
-    book: function() {
+    book: function(extent = 'all') {
       var event = this;
       var bookEvent = {
         calendarId: 'primary',
         summary: (app.newEventSummary || "reserved"),
-        start: this.event.start,
-        end: this.event.end,
+        start: extent === 'all' || extent === 'start' ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
+        end: extent === 'all' || extent === 'end' ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
         status: "confirmed",
       };
       var attendees = [];
@@ -643,8 +646,27 @@ Vue.component('event-collection-item', {
       <div v-if="isSlot || isTravel">
         <div v-if="isSlot">
           <div class="secondary-content">
-            <a href="" class="btn-flat orange white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
-            <a href="" class="btn-flat teal white-text waves-effect waves-light" v-on:click.prevent="book">Book</a>
+            <div v-if="desiredDuration">
+              <a href="#" class="btn-flat orange white-text waves-effect waves-light" 
+                v-on:click.prevent="hold">Hold</a>
+              <a href="#" class="btn-flat teal white-text waves-effect waves-light"
+                v-on:click.prevent="book">Book</a>
+            </div>
+            <div v-else>
+              <a href="#" class="dropdown-trigger btn-flat orange white-text waves-effect waves-light" 
+                v-bind:data-target='context + "hold" + event.id'>Hold</a>
+              <ul v-bind:id='context + "hold" + event.id' class='dropdown-content'>
+                <li><a href="" v-on:click.prevent="hold('all')"><i class="material-icons">select_all</i>Whole slot</li>
+                <li><a href="" v-on:click.prevent="hold('start')"><i class="material-icons">vertical_align_top</i>At start</li>
+                <li><a href="" v-on:click.prevent="hold('end')"><i class="material-icons">vertical_align_bottom</i>At end</li>
+              </ul>
+              <a href="#" class="dropdown-trigger btn-flat teal white-text waves-effect waves-light"
+                v-bind:data-target='context + "book" + event.id'>Book</a>
+              <ul v-bind:id='context + "book" + event.id' class='dropdown-content'>
+                <li><a href="" v-on:click.prevent="book('start')"><i class="material-icons">vertical_align_top</i>At start</li>
+                <li><a href="" v-on:click.prevent="book('end')"><i class="material-icons">vertical_align_bottom</i>At end</li>
+              </ul>
+            </div>
           </div>
           <span class="title">Available</span>
           <br />
@@ -676,7 +698,7 @@ Vue.component('event-collection-item', {
               <a href="" v-on:click.prevent="confirm"><i class="material-icons">event_available</i>Confirm</a>
             </li>
             <li v-if="event.attendees !== undefined">
-              <a v-if="attending != 'accepted'" href=""><i class="material-icons">event_available</i>Accept</a>
+              <a v-if="attending != 'accepted'" href="" v-on:click.prevent="accept"><i class="material-icons">event_available</i>Accept</a>
               <span v-else class="grey-text"><i class="material-icons">event_available</i>Accept</span>
             </li>
             <li v-if="event.attendees !== undefined">

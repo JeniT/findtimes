@@ -218,10 +218,10 @@
 
           <section id="manage" class="col s12 l7">
             <h3 class="amber-text text-darken-3">manage</h3>
-            <ul v-if="holding.length > 0" class="collapsible">
+            <ul v-bind:class="{ hide: holding.length === 0, collapsible: true }">
               <li is="hold-listing-collapsible" v-for="h in holding" :key="h.summary" v-bind:events="h.events" v-on:updated="getHolds"></li>
             </ul>
-            <div v-if="connected">
+            <div v-bind:class="{ hide: !connected }">
               <div v-if="showPreviousDate" class="right-align">
                 <a class="btn-flat white teal-text" v-on:click.prevent="addPreviousDaysEvents">Previous day</a>
               </div>
