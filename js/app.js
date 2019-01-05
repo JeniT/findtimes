@@ -33,7 +33,8 @@ var COLORS = {
 
 var APP_NAME = "find times";
 var APP_URL = "https://findtim.es/";
-var APP_SLOT_KIND = APP_NAME.toLowerCase() + "#slot";
+var APP_SLOT_KIND = APP_NAME.replace(' ', '').toLowerCase() + "#slot";
+var APP_TRAVEL_KIND = APP_NAME.replace(' ', '').toLowerCase() + "#travel";
 var HOLD_PREFIX = "[HOLD] ";
 
 /**
@@ -123,18 +124,30 @@ function initMap(response) {
 
 function calculateTravelTime(options, callback) {
   var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
+  var placeAliases = window.localStorage.getItem('placeAliases');
   if (cachedTravelTimes) {
     cachedTravelTimes = JSON.parse(cachedTravelTimes);
   } else {
     cachedTravelTimes = [];
   }
+  if (placeAliases) {
+    placeAliases = JSON.parse(placeAliases);
+  } else {
+    placeAliases = {};
+  }
   var travelTimes = [];
+  var travelMode = options.travelMode || app.travelMode;
+  var origins = options.origins.map(o => [o].concat(placeAliases[o]) || [o]);
+  var destinations = options.destinations.map(d => [d].concat(placeAliases[d]) || [d]);
   var arrivalDayTime = options.arrivalTime ? moment(options.arrivalTime).format('ddd HH:mm') : undefined;
   var departureDayTime = options.departureTime ? moment(options.departureTime).format('ddd HH:mm') : undefined;
-  options.origins.forEach(origin =>
-    options.destinations.forEach(function(destination) {
+  origins.forEach(originAliases =>
+    destinations.forEach(function(destinationAliases) {
+      // assume that travelling between the same two places at the same time 
+      // on any day of the week will result in the same length travel
       var cachedTravelTime = cachedTravelTimes.find(t =>
-        t.origin === origin && t.destination === destination &&
+        originAliases.find(o => t.origin === o) && destinationAliases.find(d => t.destination === d) &&
+        t.mode === travelMode &&
         (arrivalDayTime ? t.arrivalDayTime === arrivalDayTime : t.departureDayTime === departureDayTime)
       );
       if (cachedTravelTime) {
@@ -148,12 +161,42 @@ function calculateTravelTime(options, callback) {
     mapsService.getDistanceMatrix({
       origins: options.origins,
       destinations: options.destinations,
-      travelMode: options.travelMode ? options.travelMode.toUpperCase() : app.travelMode,
+      travelMode: travelMode.toUpperCase(),
       transitOptions: {
-        arrivalTime: options.arrivalTime,
-        departureTime: options.departureTime
+        arrivalTime: moment(options.arrivalTime).toDate(),
+        departureTime: moment(options.departureTime).toDate()
       },
     }, function(response) {
+      var placeAliases = window.localStorage.getItem('placeAliases');
+      if (placeAliases) {
+        placeAliases = JSON.parse(placeAliases);
+      } else {
+        placeAliases = {};
+      }
+      var originAliases = placeAliases[options.origins[0]];
+      var responseOrigin = response.originAddresses[0];
+      var destinationAliases = placeAliases[options.destinations[0]];
+      var responseDestination = response.destinationAddresses[0];
+      if (options.origins.length === 1 && options.origins[0] !== response.originAddresses[0]) {
+        if (originAliases) {
+          if (!originAliases.includes(responseOrigin)) {
+            originAliases.push(responseOrigin);
+          }
+        } else {
+          placeAliases[options.origins[0]] = response.originAddresses;
+        }
+      }
+      if (options.destinations.length === 1 && options.destinations[0] !== response.destinationAddresses[0]) {
+        if (destinationAliases) {
+          if (!destinationAliases.includes(responseDestination)) {
+            destinationAliases.push(responseDestination);
+          }
+        } else {
+          placeAliases[destinations[0]] = response.destinationAddresses;
+        }
+      }
+      window.localStorage.setItem('placeAliases', JSON.stringify(placeAliases));
+
       var cachedTravelTimes = window.localStorage.getItem('cachedTravelTimes');
       if (cachedTravelTimes) {
         cachedTravelTimes = JSON.parse(cachedTravelTimes);
@@ -169,6 +212,7 @@ function calculateTravelTime(options, callback) {
               updated: new Date(),
               origin: origin,
               destination: destination,
+              mode: travelMode,
               duration: moment.duration(element.duration.value, 'seconds')
             }
             if (arrivalDayTime) {
@@ -201,6 +245,61 @@ function calculateTravelTime(options, callback) {
   }
 }
 
+function eventLocation(event) {
+  if (event.attendees && event.attendees.find(attendee => attendee.resource)) {
+    return app.workAddress;
+  } else {
+    return event.location || event.origin || app.workAddress;
+  }
+}
+
+function originalAddresses(address) {
+  var placeAliases = window.localStorage.getItem('placeAliases');
+  placeAliases = placeAliases ? JSON.parse(placeAliases) : {};
+  return Object.keys(placeAliases).filter(original => placeAliases[original].includes(address)).concat([address]);
+}
+
+function fetchEventTravel(events, places, success, index = 0) {
+  var otherPlaces;
+  if (events.length <= index) {
+    return success.call(this, events);
+  }
+  var event = events[index];
+  if (event.start.dateTime) {
+    var eventAddress = eventLocation(event);
+    if (eventAddress !== app.workAddress) {
+      otherPlaces = places.filter(p => p !== eventAddress);
+      calculateTravelTime({
+        origins: otherPlaces,
+        destinations: [eventAddress],
+        arrivalTime: event.start.dateTime
+      }, function(travelTo) {
+        event.travelTo = travelTo.map(function(t) {
+          return {
+            origin: t.origin,
+            leave: moment(event.start.dateTime).subtract(moment.duration(t.duration))
+          }
+        });
+        calculateTravelTime({
+          origins: [eventAddress],
+          destinations: otherPlaces,
+          departureTime: event.end.dateTime
+        }, function(travelFrom) {
+          event.travelFrom = travelFrom.map(function(t) {
+            return {
+              destination: t.destination,
+              arrive: moment(event.end.dateTime).add(moment.duration(t.duration))
+            }
+          });
+          fetchEventTravel(events, places, success, index + 1);
+        });
+      });
+      return;
+    }
+  }
+  fetchEventTravel(events, places, success, index + 1);
+}
+
 function fetchCalendarEvents(calendarIds, start, end, success, error, events = []) {
   if (calendarIds.length === 0) {
     return success.call(this, events);
@@ -216,9 +315,20 @@ function fetchCalendarEvents(calendarIds, start, end, success, error, events = [
       'orderBy': 'startTime'
     }).then(function(response) {
       var es = response.result.items;
-      es.forEach(function(e) { e.calendarId = calendarId; return e; })
-      events = events.concat(es);
-      fetchCalendarEvents(calendarIds, start, end, success, error, events);
+      es.forEach(e => e.calendarId = calendarId);
+      if (calendarId === 'primary') {
+        var places = es.map(e => eventLocation(e));
+        if (!places.includes(app.workAddress)) places.push(app.workAddress);
+        if (!places.includes(app.homeAddress)) places.push(app.homeAddress);
+        if (!places.includes(app.address)) places.push(app.address);
+        fetchEventTravel(es, places, function(es) {
+          events = events.concat(es);
+          fetchCalendarEvents(calendarIds, start, end, success, error, events);
+        });
+      } else {
+        events = events.concat(es);
+        fetchCalendarEvents(calendarIds, start, end, success, error, events);
+      }
     }, function(response) {
       error.call(this, calendarId, response);
       fetchCalendarEvents(calendarIds, start, end, success, error, events);
@@ -229,10 +339,10 @@ function fetchCalendarEvents(calendarIds, start, end, success, error, events = [
 }
 
 function sortEvents(e1, e2) {
-  var start1 = e1.start.dateTime || (e1.start.date + "T00:00:00");
-  var start2 = e2.start.dateTime || (e2.start.date + "T00:00:00");
-  var end1 = e1.end.dateTime || (e1.end.date + "T00:00:00");
-  var end2 = e2.end.dateTime || (e2.end.date + "T00:00:00");
+  var start1 = moment(e1.start.dateTime || (e1.start.date + "T00:00:00")).toISOString();
+  var start2 = moment(e2.start.dateTime || (e2.start.date + "T00:00:00")).toISOString();
+  var end1 = moment(e1.end.dateTime || (e1.end.date + "T00:00:00")).toISOString();
+  var end2 = moment(e2.end.dateTime || (e2.end.date + "T00:00:00")).toISOString();
   var id1 = e1.id;
   var id2 = e2.id;
   if (start1 < start2) {
@@ -243,6 +353,10 @@ function sortEvents(e1, e2) {
     return -1;
   } else if (end1 > end2) {
     return 1;
+  } else if (e1.calendarId === 'primary') {
+    return -1;
+  } else if (e2.calendarId === 'primary') {
+    return 1;
   } else if (id1 < id2) {
     return -1;
   } else if (id1 > id2) {
@@ -252,43 +366,241 @@ function sortEvents(e1, e2) {
   }
 }
 
-function addSlotsBetween(start, end, duration, events, eventIndex = 0) {
-  var eventStarts, eventEnds;
+function timeOnDay(day, time) {
+  var time = time.split(':').map(i => Number.parseInt(i));
+  return moment(day).startOf('day').add({ hours: time[0], minutes: time[1] });
+}
+
+function addSlotsBetween(start, end, duration, startAddress, events, eventIndex = 0) {
+  var eventStarts, eventEnds, eventAddress, endLocation;
+  var morningCommute = false;
+  var eveningCommute = false;
   var attending = "accepted";
+  var workStarts = timeOnDay(start, app.defaultStartTime);
+  var workEnds = timeOnDay(start, app.defaultEndTime);
   if (events.length > eventIndex) {
     eventStarts = events[eventIndex].start.dateTime || (events[eventIndex].start.date + "T00:00:00");
     eventEnds = events[eventIndex].end.dateTime || (events[eventIndex].end.date + "T00:00:00");
+    eventAddress = eventLocation(events[eventIndex]);
+    endLocation = events[eventIndex].destination || eventAddress;
     if (events[eventIndex].attendees) {
       var ownAttendance = events[eventIndex].attendees.find(attendee => attendee.self);
       attending = ownAttendance === undefined ? "accepted" : ownAttendance.responseStatus;
+      if (events[eventIndex].attendees.find(attendee => attendee.resource)) {
+        eventAddress = app.workAddress;
+      }
     }
+    if (startAddress === app.homeAddress && eventAddress === app.workAddress && start.format('HH:mm') === app.commuteStartTime) {
+      morningCommute = true;
+    }
+  } else if (startAddress === app.homeAddress) {
+    // this happens if there are no events all day; should go to work regardless
+    eventStarts = workStarts;
+    eventAddress = app.workAddress;
+    morningCommute = true;
   } else {
+    // rest of the day is free but have to get home
     eventStarts = end;
+    eventAddress = app.homeAddress; // where you want to end up
+    eveningCommute = true;
   }
-  var slotEnds = moment(start).add({ minutes: duration });
+  var slotStarts = moment(start);
+  if (slotStarts.second() !== 0) slotStarts.second(60); // moment helpfully bubbles this up to the minute
+  if (slotStarts.minute() % 15) {
+    if (slotStarts.minute() < 15) {
+      slotStarts.minute(15);
+    } else if (slotStarts.minute() < 30) {
+      slotStarts.minute(30);
+    } else if (slotStarts.minute() < 45) {
+      slotStarts.minute(45);
+    } else {
+      slotStarts.minute(60); // moment helpfully bubbles this up to the hour
+    }
+  }
+  var slotEnds = moment(slotStarts).add({ minutes: duration });
+  if (startAddress !== eventAddress) {
+    var travelTo;
+    // add some travel
+    var travel = {
+      kind: APP_TRAVEL_KIND,
+      id: Math.random().toString().replace('.', ''),
+      travel: true,
+      origin: startAddress,
+      destination: eventAddress
+    };
+    if (morningCommute) {
+      travel = {
+        ...travel,
+        start: { dateTime: start },
+        end: { dateTime: workStarts },
+        mode: app.travelMode
+      }
+      events.splice(eventIndex, 0, travel);
+      return addSlotsBetween(travel.end.dateTime, end, duration, app.workAddress, events, eventIndex + 1);
+    } else if (eveningCommute) {
+      // eventAddress is always app.workAddress
+      if (startAddress === app.workAddress) {
+        travel = {
+          ...travel,
+          start: { dateTime: workEnds },
+          end: { dateTime: end },
+          mode: app.travelMode
+        }
+        events.splice(eventIndex, 0, travel);
+        // maybe do something before commuting
+        return addSlotsBetween(start, end, duration, startAddress, events, eventIndex);
+      } else {
+        if (eventIndex > 0 && events[eventIndex - 1].travelFrom) {
+          var toHome = events[eventIndex - 1].travelFrom.find(t => t.destination === app.homeAddress);
+          var toWork = events[eventIndex - 1].travelFrom.find(t => t.destination === app.workAddress);
+          if (moment(toWork.arrive).isSameOrAfter(workEnds)) {
+            // no point going back to work, go straight home
+            travel = {
+              ...travel,
+              destination: app.homeAddress,
+              start: { dateTime: workEnds },
+              end: { dateTime: end },
+              mode: app.travelMode
+            }
+            events.splice(eventIndex, 0, travel);
+            // maybe do something before going home
+            return addSlotsBetween(start, end, duration, startAddress, events, eventIndex);
+          } else {
+            // go back to work first
+            travel = {
+              ...travel,
+              destination: app.workAddress,
+              start: { dateTime: start },
+              end: { dateTime: toWork.arrive },
+              mode: app.travelMode
+            }
+            events.splice(eventIndex, 0, travel);
+            return addSlotsBetween(travel.end.dateTime, end, duration, app.workAddress, events, eventIndex + 1);
+          }
+        } else {
+          // assume a magical transporter that takes you where you're going instantaneously!
+          return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex);
+        }
+      }
+    } else {
+      if (events.length > eventIndex && events[eventIndex].travelTo) {
+        var fromHome = events[eventIndex].travelTo.find(t => t.origin === app.homeAddress);
+        var fromWork = events[eventIndex].travelTo.find(t => t.origin === app.workAddress);
+        if (startAddress === app.homeAddress) {
+          if (moment(fromWork.leave).isAfter(workStarts)) {
+            // there's time to go to work first
+            travel = {
+              ...travel,
+              destination: app.workAddress,
+              start: { dateTime: start },
+              end: { dateTime: workStarts },
+              mode: app.travelMode
+            }
+            events.splice(eventIndex, 0, travel);
+            return addSlotsBetween(travel.end.dateTime, end, duration, travel.destination, events, eventIndex + 1);
+          } else {
+            // go straight there, even if it means leaving home a little later than usual
+            travel = {
+              ...travel,
+              start: { dateTime: fromHome.leave },
+              end: { dateTime: eventStarts },
+              mode: fromHome.mode || app.travelMode
+            }
+            events.splice(eventIndex, 0, travel);
+            // skip to after the event
+            return addSlotsBetween(moment(eventEnds), end, duration, eventAddress, events, eventIndex + 2);
+          }
+        } else if (startAddress !== app.workAddress && eventIndex > 0 && events[eventIndex - 1].travelFrom) {
+          var toWork = events[eventIndex - 1].travelFrom.find(t => t.destination === app.workAddress);
+          if (toWork.arrive.isSameOrAfter(fromWork.leave)) {
+            // go straight to the next place you need to be at
+            travelFrom = events[eventIndex - 1].travelFrom.find(t => originalAddresses(t.destination).includes(eventAddress));
+            if (travelFrom) {
+              travel = {
+                ...travel,
+                start: { dateTime: start },
+                end: { dateTime: travelFrom.arrive },
+                mode: travelFrom.mode || app.travelMode
+              }
+              events.splice(eventIndex, 0, travel);
+              return addSlotsBetween(moment(travel.end.dateTime), end, duration, eventAddress, events, eventIndex + 1);
+            } else {
+              // assume a magical transporter that takes you there instantaneously!
+              return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex);
+            }
+          } else {
+            // go back to work before travelling on
+            travel = {
+              ...travel,
+              destination: app.workAddress,
+              start: { dateTime: start },
+              end: { dateTime: toWork.arrive },
+              mode: toWork.mode || app.travelMode
+            };
+            events.splice(eventIndex, 0, travel);
+            // maybe do something before travelling
+            return addSlotsBetween(toWork.arrive, end, duration, app.workAddress, events, eventIndex + 1);
+          }
+        } else {
+          travelTo = events[eventIndex].travelTo.find(t => originalAddresses(t.origin).includes(startAddress));
+          if (travelTo) {
+            travel = {
+              ...travel,
+              start: { dateTime: travelTo.leave },
+              end: { dateTime: eventStarts },
+              mode: travelTo.mode || app.travelMode
+            }
+            events.splice(eventIndex, 0, travel);
+            // maybe do something before travelling
+            return addSlotsBetween(start, end, duration, startAddress, events, eventIndex);
+          } else {
+            // assume a magical transporter that takes you there instantaneously!
+            return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex);
+          }
+        }
+      } else if (eventIndex > 0 && events[eventIndex - 1].travelFrom) {
+        // try to travel to eventAddress
+        var travelFrom = events[eventIndex - 1].travelFrom.find(t => originalAddresses(t.destination).includes(eventAddress));
+        if (travelFrom) {
+          travel = {
+            ...travel,
+            start: { dateTime: start },
+            end: { dateTime: travelFrom.arrive },
+            mode: travelFrom.mode || app.travelMode
+          }
+          events.splice(eventIndex, 0, travel);
+          return addSlotsBetween(moment(travel.end.dateTime), end, duration, eventAddress, events, eventIndex + 1);
+        } else {
+          // assume a magical transporter that takes you there instantaneously!
+          return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex);
+        }
+      }
+    }
+  }
   if (slotEnds.isAfter(end)) {
     return events;
   } else if (events.length > eventIndex &&
     (events[eventIndex].transparency == "transparent" ||
       attending == "declined" ||
-      start.isAfter(eventEnds))) {
-    return addSlotsBetween(start, end, duration, events, eventIndex + 1);
+      slotStarts.isAfter(eventEnds))) {
+    return addSlotsBetween(start, end, duration, startAddress, events, eventIndex + 1);
   } else if (slotEnds.isAfter(eventStarts)) {
-    if (moment(eventEnds).isAfter(end)) {
+    if (moment(eventEnds).isSameOrAfter(end)) {
       return events;
     } else {
-      return addSlotsBetween(moment(eventEnds), end, duration, events, eventIndex + 1);
+      return addSlotsBetween(moment(eventEnds), end, duration, endLocation, events, eventIndex + 1);
     }
   } else {
     var slot = {
       kind: APP_SLOT_KIND,
       id: Math.random().toString().replace('.', ''),
       hold: true,
-      start: { dateTime: start.toISOString() },
-      end: { dateTime: slotEnds.toISOString() }
+      start: { dateTime: slotStarts },
+      end: { dateTime: slotEnds },
+      location: app.address
     };
     events.splice(eventIndex, 0, slot);
-    return addSlotsBetween(slotEnds, end, duration, events, eventIndex + 1);
+    return addSlotsBetween(slotEnds, end, duration, app.address, events, eventIndex + 1);
   }
 }
 
@@ -395,17 +707,20 @@ Vue.component('day-expandable', {
   },
   methods: {
     refresh: function(propagate = true) {
-      var startTime = app.startTime.split(':').map(i => Number.parseInt(i));
-      var endTime = app.endTime.split(':').map(i => Number.parseInt(i));
-      var start = moment(this.date).startOf('day').add({ hours: startTime[0], minutes: startTime[1] });
-      var end = moment(this.date).startOf('day').add({ hours: endTime[0], minutes: endTime[1] });
+      var dayStart = timeOnDay(this.date, app.commuteStartTime);
+      var dayEnd = timeOnDay(this.date, app.commuteEndTime);
+      var searchStart = timeOnDay(this.date, app.startTime);
+      var searchEnd = timeOnDay(this.date, app.endTime);
+
       var duration = app.lasting;
       var dayExpandable = this;
-      fetchCalendarEvents(app.invite.concat(['primary']), start, end, function(events) {
+      fetchCalendarEvents(app.invite.concat(['primary']), dayStart, dayEnd, function(events) {
         dayExpandable.error = false;
         events = events.sort(sortEvents);
         events = events.filter(function(e, i) { if ((i == 0) || (events[i - 1].id !== e.id)) return e; });
-        dayExpandable.events = addSlotsBetween(start, end, duration, events).sort(sortEvents);
+        events = addSlotsBetween(dayStart, dayEnd, duration, app.homeAddress, events).sort(sortEvents);
+        // dayExpandable.events = events.filter(e => searchStart.isBefore(e.start.dateTime || e.start.date) && searchEnd.isAfter(e.end.dateTime || e.end.date));
+        dayExpandable.events = events;
         if (propagate) {
           dayExpandable.$emit('updated');
         }
@@ -463,6 +778,9 @@ Vue.component('event-collection-item', {
     },
     isSlot: function() {
       return this.event.kind === APP_SLOT_KIND;
+    },
+    isTravel: function() {
+      return this.event.kind === APP_TRAVEL_KIND;
     },
     allDay: function() {
       return this.event.start.dateTime === undefined;
@@ -522,7 +840,7 @@ Vue.component('event-collection-item', {
     },
     classes: function() {
       var classes = {};
-      if (!this.isSlot) {
+      if (!this.isSlot && !this.isTravel) {
         if (!this.ownEvent) {
           classes = {
             'blue-grey': true,
@@ -551,11 +869,12 @@ Vue.component('event-collection-item', {
       classes[this.attending] = true;
       classes["transparent"] = this.event.transparency == "transparent";
       classes["slot"] = this.isSlot;
+      classes["travel"] = this.isTravel;
       return classes;
     },
     dateClasses: function() {
       var classes = {};
-      if (!this.isSlot) {
+      if (!this.isSlot && !this.isTravel) {
         if (!this.ownEvent) {
           classes = {
             'blue-grey-text': true,
@@ -586,6 +905,18 @@ Vue.component('event-collection-item', {
           start.format('HH:mm') + " - " +
           (endDate !== startDate ? (endDate + " ") : "") +
           end.format('HH:mm');
+      }
+    },
+    formattedTravelMode: function() {
+      switch (this.event.mode) {
+        case "walking":
+          return "foot";
+        case "driving":
+          return "car";
+        case "transit":
+          return "public transport";
+        case "bicycling":
+          return "bike";
       }
     }
   },
@@ -788,14 +1119,22 @@ Vue.component('event-collection-item', {
   },
   template: `
     <li class="collection-item" v-bind:class="classes">
-      <div v-if="isSlot">
-        <div class="secondary-content">
-          <a href="" class="btn-flat orange white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
-          <a href="" class="btn-flat teal white-text waves-effect waves-light" v-on:click.prevent="book">Book</a>
+      <div v-if="isSlot || isTravel">
+        <div v-if="isSlot">
+          <div class="secondary-content">
+            <a href="" class="btn-flat orange white-text waves-effect waves-light" v-on:click.prevent="hold">Hold</a>
+            <a href="" class="btn-flat teal white-text waves-effect waves-light" v-on:click.prevent="book">Book</a>
+          </div>
+          <span class="title">Available</span>
+          <br />
+          <span class="grey-text">{{formattedDate}}</span>
         </div>
-        <span class="title">Available</span>
-        <br />
-        <span class="grey-text">{{formattedDate}}</span>
+        <div v-if="isTravel">
+          <span class="title">Travel</span><br/>
+          {{event.origin.split(',')[0]}} to {{event.destination.split(',')[0]}}
+          <br />
+          <span class="grey-text">{{formattedDate}}</span> by {{formattedTravelMode}}
+        </div>
       </div>
       <div v-else>
         <div v-if="ownEvent" class="secondary-content">
@@ -918,7 +1257,7 @@ var app = new Vue({
         if (this.startTime !== this.defaultStartTime) params.push('startTime=' + this.startTime);
         if (this.endTime !== this.defaultEndTime) params.push('endTime=' + this.endTime);
         if (this.invite.length > 0) params.push('invite=' + this.invite.map((i) => encodeURIComponent(i)).join(","));
-        if (this.address !== this.workAddress) params.push('address=' + encodeURIComponent(this.address));
+        if (this.address !== undefined && this.address !== "" && this.address !== this.workAddress) params.push('address=' + encodeURIComponent(this.address));
         return params.length > 0 ? ("?" + params.join('&')) : "";
       },
       set: function(url) {
@@ -1005,6 +1344,7 @@ var app = new Vue({
     this.lasting = urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting;
     this.startTime = urlParams.has('startTime') ? urlParams.get('startTime') : this.defaultStartTime;
     this.endTime = urlParams.has('endTime') ? urlParams.get('endTime') : this.defaultEndTime;
+    this.address = urlParams.has('address') ? urlParams.get('address') : this.workAddress;
 
     this.showMoreSearchOptions = this.invite.length > 0 || this.startTime !== this.defaultStartTime || this.endTime !== this.defaultEndTime;
 
@@ -1187,11 +1527,9 @@ var app = new Vue({
     },
     updateCommuteTimes: function() {
       if (this.homeAddress !== "" && this.workAddress !== "") {
-        var startTime = this.defaultStartTime.split(':').map(i => Number.parseInt(i));
-        var endTime = this.defaultEndTime.split(':').map(i => Number.parseInt(i));
         var commuteDay = moment().startOf('week').add({ 'week': 1, 'days': 1 });
-        var start = moment(commuteDay).add({ hours: startTime[0], minutes: startTime[1] });
-        var end = moment(commuteDay).add({ hours: endTime[0], minutes: endTime[1] });
+        var start = timeOnDay(commuteDay, this.defaultStartTime);
+        var end = timeOnDay(commuteDay, this.defaultEndTime);
         calculateTravelTime({
           origins: [this.homeAddress],
           destinations: [this.workAddress],

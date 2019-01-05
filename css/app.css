@@ -28,6 +28,10 @@
     border-right: #009688 12px solid;
 }
 
+.travel {
+    border-right: #ff9800 12px solid;
+}
+
 .collapsible-body .collection {
     position: inherit;
 }
@@ -36,6 +40,6 @@
     background-color: rgba(255, 193, 7, 0.65);
 }
 
-span.badge + span.badge {
+span.badge+span.badge {
     margin-left: 12px;
 }
