@@ -656,15 +656,15 @@ Vue.component('event-collection-item', {
               <a href="#" class="dropdown-trigger btn-flat orange white-text waves-effect waves-light" 
                 v-bind:data-target='context + "hold" + event.id'>Hold</a>
               <ul v-bind:id='context + "hold" + event.id' class='dropdown-content'>
-                <li><a href="" v-on:click.prevent="hold('all')"><i class="material-icons">select_all</i>Whole slot</li>
-                <li><a href="" v-on:click.prevent="hold('start')"><i class="material-icons">vertical_align_top</i>At start</li>
-                <li><a href="" v-on:click.prevent="hold('end')"><i class="material-icons">vertical_align_bottom</i>At end</li>
+                <li><a href="" v-on:click.prevent="hold('all')"><i class="material-icons">select_all</i>Whole slot</a></li>
+                <li><a href="" v-on:click.prevent="hold('start')"><i class="material-icons">vertical_align_top</i>At start</a></li>
+                <li><a href="" v-on:click.prevent="hold('end')"><i class="material-icons">vertical_align_bottom</i>At end</a></li>
               </ul>
               <a href="#" class="dropdown-trigger btn-flat teal white-text waves-effect waves-light"
                 v-bind:data-target='context + "book" + event.id'>Book</a>
               <ul v-bind:id='context + "book" + event.id' class='dropdown-content'>
-                <li><a href="" v-on:click.prevent="book('start')"><i class="material-icons">vertical_align_top</i>At start</li>
-                <li><a href="" v-on:click.prevent="book('end')"><i class="material-icons">vertical_align_bottom</i>At end</li>
+                <li><a href="" v-on:click.prevent="book('start')"><i class="material-icons">vertical_align_top</i>At start</a></li>
+                <li><a href="" v-on:click.prevent="book('end')"><i class="material-icons">vertical_align_bottom</i>At end</a></li>
               </ul>
             </div>
           </div>
@@ -1124,7 +1124,7 @@ var app = new Vue({
                 app.invalidAddress = false;
               }
               if (travelTime.duration) {
-                app.commuteToAddress = moment(start).add(moment.duration(travelTime.duration)).endOf('minute').format('HH:mm');
+                app.commuteToAddress = timeOnDay(commuteDay, app.commuteStartTime).add(moment.duration(travelTime.duration)).endOf('minute').format('HH:mm');
               }
             }
             // work out latest time could leave address
@@ -1151,7 +1151,7 @@ var app = new Vue({
                   app.invalidHomeAddress = false;
                 }
                 if (travelTime.duration) {
-                  app.commuteFromAddress = moment(end).subtract(moment.duration(travelTime.duration)).startOf('minute').format('HH:mm');
+                  app.commuteFromAddress = timeOnDay(commuteDay, app.commuteEndTime).subtract(moment.duration(travelTime.duration)).startOf('minute').format('HH:mm');
                 }
               }
               if (refresh) {

@@ -155,7 +155,7 @@ function fetchEventTravel(events, places, success, index = 0) {
   if (event.start.dateTime) {
     var eventAddress = eventLocation(event);
     if (eventAddress !== app.workAddress) {
-      otherPlaces = places.filter(p => p !== eventAddress);
+      otherPlaces = places.filter(p => p !== "" && p !== eventAddress);
       calculateTravelTime({
         origins: otherPlaces,
         destinations: [eventAddress],
