@@ -133,20 +133,20 @@
               </select>
             </div>
             <h5 class="col s12">Travel times</h5>
-            <div class="input-field col s6 xl3">
-              <div>Include travel times</div>
-            </div>
-            <div class="input-field col s6 xl3">
-              <div class="switch">
-                <label>
-                  No
-                  <input type="checkbox" v-model="travelTimeEnabled">
-                  <span class="lever"></span>
-                  Yes
-                </label>
-              </div>
-            </div>
-            <div class="input-field col s12 xl6">
+            <!--<div class="input-field col s6 xl3">-->
+            <!--  <div>Include travel times</div>-->
+            <!--</div>-->
+            <!--<div class="input-field col s6 xl3">-->
+            <!--  <div class="switch">-->
+            <!--    <label>-->
+            <!--      No-->
+            <!--      <input type="checkbox" v-model="travelTimeEnabled">-->
+            <!--      <span class="lever"></span>-->
+            <!--      Yes-->
+            <!--    </label>-->
+            <!--  </div>-->
+            <!--</div>-->
+            <div class="input-field col s12">
               <label for="travelMode" class="active">Mode of travel</label>
               <select id="travelMode" v-on:change="setValueFromSelect">
                 <option value="walking" v-bind:selected="travelMode === 'walking' ? 'selected' : ''">Walk</option>
