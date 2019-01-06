@@ -20,6 +20,7 @@
         <div class="nav-wrapper teal">
           <a href="/" class="brand-logo left"><i class="material-icons">event</i>find times</a>
           <ul class="right">
+            <li><a href="#about" class="modal-trigger">About</a></li>
             <li v-bind:class="{hide: !connected}">
               <a href="" data-target="profileMenu" class="dropdown-trigger btn-floating btn-medium waves-effect waves-light teal">
                 <img v-bind:src="profile.picture" alt="" class="circle responsive-img">
@@ -36,6 +37,65 @@
           </ul>
         </div>
       </nav>
+      <div id="about" class="modal modal-fixed-footer">
+        <div class="modal-content">
+          <h4>About</h4>
+          <p>
+            I wrote find times for fun and to scratch one of my own itches.
+          </p>
+          <p>
+            I frequently have to find slots for meetings, send a list of slots to the person I'm trying to meet up with, or to include in a Doodle, and reserve them in my own calendar. Or I have to find times when I can meet particular colleagues. Finding these times
+            and managing held slots when confirmations come in takes more time than it should, and I can't afford to employ someone to do it all for me.
+          </p>
+          <p>
+            This application helps manage that process. The usual flow is:
+          </p>
+          <ol>
+            <li>log in, obviously</li>
+            <li>fill in the form with requirements for the meeting, such as when it needs to be, how long, or with whom</li>
+            <li>review your agenda; hold a number of slots, or one book immediately</li>
+            <li>review the chosen slots and get a summary; copy it and paste into an email</li>
+            <li>when the confirmation comes in for an agreeable time, confirm the slot</li>
+          </ol>
+          <p>
+            When identifying slots for you, the app will take into account your preferences such as what counts as working hours, but also where you live and work, which helps when identifying whether you have time to travel to potential meetings out of the office.
+            You can set these using the Settings menu just below your profile picture.
+          </p>
+          <h5>Requirements</h5>
+          <p>
+            You need to use Google Calendar. You should use it well by doing things declining meetings that you have no intention of attending, and setting the free/busy flag to free if you're actually free and busy if you're actually busy. Oh, and supplying locations
+            that are actual addresses you can go to rather than rooms in your house.
+          </p>
+          <p>
+            It helps if the people you're trying to meet with have Google Calendar too and share it with you, at least its free/busy state, but that's not an absolute necessity if they prefer you to email them with options <i>like animals</i>.
+          </p>
+          <h5>Disclaimers</h5>
+          <p>
+            I mostly wrote this for fun as a Xmas holiday project. It is not meant as a production level tool and if it happens to be useful, that's a bonus. It has bugs. If you grant it access to your calendar, it might mess it up. Maybe experiment a little before
+            you start trusting it, particularly as it's a web application that I could change at any time.
+          </p>
+          <p>
+            On the plus side, I'm not going to purposefully make it do bad things because I actually want to use it myself. You can look at the <a href="https://github.com/JeniT/findtimes">code on Github</a> (though I warn you it's spaghetti-like and
+            omg there are no tests!). It's a completely static site. All that personal data you enter is stored in your browser and never gets sent anywhere else, except to Google Calendar of course, but you're using that already so I guess you don't
+            care what Google knows about your life.
+          </p>
+          <h5>Get in touch</h5>
+          <p>
+            Did I already say I wrote this for fun? If you use it and you like it then message me <a href="https://twitter.com/jenit">@JeniT</a>. If you find a bug or have an idea for a feature you'd like to see you can <a href="https://github.com/JeniT/findtimes/issues">create an issue on Github</a>            but I give you absolutely no guarantee that I'll do anything about it.
+          </p>
+          <h5>Acknowledgements</h5>
+          <p>
+            This is written using the <a href="https://vuejs.org/">Vue.js</a> Javascript framework and the <a href="https://materializecss.com/">Materialize</a> CSS framework. I hadn't used them before and they're both great. I'm probably using them all
+            wrong (particularly Vue.js) but if it works, it works. Hosting is <a href="https://pages.github.com/">Github Pages</a>.
+          </p>
+          <p>
+            Seems finally appropriate to put some thanks to my family for feeding & watering me and trying to make me go to bed or outside once in a while rather than coding all through the holidays. And for the cat for letting me use her chair.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <a href="#!" class="modal-close btn-flat">Close</a>
+        </div>
+      </div>
       <div id="settings" class="modal modal-fixed-footer">
         <div class="modal-content">
           <div class="row">

@@ -45,28 +45,6 @@ var HOLD_PREFIX = "[HOLD] ";
  */
 function handleClientLoad() {
   gapi.load('client:auth2', initClient);
-
-  // init pickers
-  M.Datepicker.init(document.getElementById('after'), {
-    setDefaultDate: true,
-    minDate: new Date(),
-    onClose: function(e) {
-      app.searchFrom = this.date;
-    }
-  });
-
-  var selects = document.querySelectorAll('select');
-  var formSelects = M.FormSelect.init(selects, {
-    dropdownOptions: {
-      constrainWidth: false,
-      hover: false
-    }
-  });
-
-  var collapsibles = document.querySelectorAll('.collapsible.expandable');
-  M.Collapsible.init(collapsibles, {
-    accordion: false
-  });
 }
 
 /**
@@ -963,14 +941,39 @@ var app = new Vue({
 
     this.showMoreSearchOptions = this.invite.length > 0 || this.startTime !== this.defaultStartTime || this.endTime !== this.defaultEndTime || this.address !== this.workAddress;
 
+    // init pickers
+    M.Datepicker.init(document.getElementById('after'), {
+      setDefaultDate: true,
+      minDate: new Date(),
+      onClose: function(e) {
+        app.searchFrom = this.date;
+      }
+    });
+
+    var selects = document.querySelectorAll('select');
+    var formSelects = M.FormSelect.init(selects, {
+      dropdownOptions: {
+        constrainWidth: false,
+        hover: false
+      }
+    });
+
+    var collapsibles = document.querySelectorAll('.collapsible.expandable');
+    M.Collapsible.init(collapsibles, {
+      accordion: false
+    });
+
     var invite = document.querySelectorAll('.chips');
     M.Chips.init(invite, {
       placeholder: 'Enter emails',
       data: this.invite.map(function(i) { return { tag: i }; })
     });
 
-    var modals = document.querySelectorAll('#settings');
-    M.Modal.init(modals, {
+    var about = document.querySelectorAll('#about');
+    M.Modal.init(about, {});
+
+    var settings = document.querySelectorAll('#settings');
+    M.Modal.init(settings, {
       onCloseEnd: function() {
         app.refresh();
       }
