@@ -579,7 +579,7 @@ Vue.component('event-collection-item', {
       var event = this;
       var holdEvent = {
         calendarId: 'primary',
-        summary: "[HOLD] " + (app.newEventSummary || "reserved"),
+        summary: "[HOLD] " + (app.summary || "reserved"),
         start: extent === 'all' || extent === 'start' ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
         end: extent === 'all' || extent === 'end' ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
         status: "tentative",
@@ -600,7 +600,7 @@ Vue.component('event-collection-item', {
       var event = this;
       var bookEvent = {
         calendarId: 'primary',
-        summary: (app.newEventSummary || "reserved"),
+        summary: (app.summary || "reserved"),
         start: extent === 'all' || extent === 'start' ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
         end: extent === 'all' || extent === 'end' ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
         status: "confirmed",
@@ -729,7 +729,7 @@ Vue.component('event-collection-item', {
 
 var urlParams = new URL(document.location).searchParams;
 var searchDefaults = {
-  newEventSummary: "",
+  summary: "",
   searchFromDate: moment().startOf('day').add({ days: 1 }),
   lasting: 60,
   within: 'P2W',
@@ -744,7 +744,7 @@ var app = new Vue({
     dates: [],
     connected: false,
     calendar: {},
-    newEventSummary: urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.newEventSummary,
+    summary: urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary,
     searchFromDate: urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : searchDefaults.searchFromDate,
     lasting: urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting,
     within: searchDefaults.within,
@@ -811,7 +811,7 @@ var app = new Vue({
       },
       set: function(url) {
         var urlParams = new URL(url).searchParams;
-        this.newEventSummary = urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary;
+        this.summary = urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary;
         this.searchFromDate = urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : searchDefaults.searchFromDate;
         this.lasting = urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting;
         this.within = urlParams.has('within') ? moment.duration(urlParams.get('within')) : this.defaultWithin;
@@ -976,7 +976,7 @@ var app = new Vue({
     },
     refresh: function(e) {
       window.history.pushState({
-        newEventSummary: this.newEventSummary,
+        summary: this.summary,
         searchFromDate: moment(this.searchFromDate).format('YYYY-MM-DD'),
         lasting: this.lasting,
         within: this.within

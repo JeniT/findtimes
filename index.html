@@ -169,7 +169,7 @@
                     </select>
                   </div>
                   <div class="input-field col s12 m12 l12">
-                    <input placeholder="Meeting" id="summary" type="text" v-model.trim="newEventSummary">
+                    <input placeholder="Meeting" id="summary" type="text" v-model.trim="summary">
                     <label for="summary">Hold for</label>
                   </div>
                   <div class="col s12 l12" v-bind:class="{hide: !showMoreSearchOptions}">
@@ -210,7 +210,7 @@
                 <div class="right-align">
                   <a v-if="showMoreSearchOptions" href="" class="btn-flat white" v-on:click.prevent="showMoreSearchOptions = false">Less</a>
                   <a v-else href="" class="btn-flat white" v-on:click.prevent="showMoreSearchOptions = true">More</a>
-                  <button type="submit" class="btn btn-flat waves-effect waves-light amber"><i class="material-icons right">search</i>Search</button>
+                  <a v-bind:href="url" class="btn btn-flat waves-effect waves-light amber"><i class="material-icons right">search</i>Search</a>
                 </div>
               </div>
             </form>
