@@ -351,9 +351,9 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       } else if (startAddress === app.workAddress) {
         slotTravelToEnds = moment(start).add(app.travelToAddress);
       }
-    } else if (startAddress === app.homeAddress) {
+    } else if (startAddress === app.homeAddress && app.homeAddress !== "") {
       slotTravelToEnds = timeOnDay(start, app.commuteToAddress);
-    } else if (startAddress === app.workAddress) {
+    } else if (startAddress === app.workAddress && app.workAddress !== "") {
       slotTravelToEnds = moment(start).add(app.travelToAddress);
     }
     if (!slotTravelToEnds.isSame(start)) {
@@ -403,13 +403,13 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       // that'll be handled by the standard travel-adding code, just whether there's
       // time to get there
       var canMakeItToNextEvent = false;
-      if (eventAddress === app.address) {
+      if (eventAddress === app.address || app.address === "") {
         canMakeItToNextEvent = true;
         slotEnds = moment(eventStarts);
-      } else if (eventAddress === app.homeAddress) {
+      } else if (eventAddress === app.homeAddress && app.homeAddress !== "") {
         canMakeItToNextEvent = slotEnds.isSameOrBefore(timeOnDay(start, app.commuteFromAddress));
         slotEnds = timeOnDay(start, app.commuteFromAddress);
-      } else if (eventAddress === app.workAddress) {
+      } else if (eventAddress === app.workAddress && app.workAddress !== "") {
         canMakeItToNextEvent = (slotEnds).add(app.travelFromAddress).isSameOrBefore(eventStarts);
         slotEnds = (slotEnds).add(app.travelFromAddress);
       } else if (events.length > 0 && events[eventIndex].travelTo) {
@@ -442,13 +442,13 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       }
     }
   }
-  if (events.length <= eventIndex && startAddress === app.homeAddress) {
+  if (events.length <= eventIndex && startAddress === app.homeAddress && app.homeAddress !== "") {
     // this happens if there are no events all day; should go to work regardless
     eventStarts = workStarts;
     eventAddress = app.workAddress;
     morningCommute = true;
   }
-  if (startAddress !== eventAddress) {
+  if (startAddress !== "" && eventAddress !== "" && startAddress !== eventAddress) {
     var travelTo;
     // add some travel
     var travel = {
@@ -469,7 +469,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       return addSlotsBetween(moment(travel.end.dateTime), end, duration, app.workAddress, events, eventIndex + 1);
     } else if (eveningCommute) {
       // eventAddress is always app.homeAddress
-      if (startAddress === app.workAddress) {
+      if (startAddress === app.workAddress && app.workAddress !== "") {
         travel = {
           ...travel,
           start: { dateTime: workEnds },
@@ -493,7 +493,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
         if (eventIndex > 0 && events[eventIndex - 1].travelFrom) {
           var toHome = events[eventIndex - 1].travelFrom.find(t => t.destination === app.homeAddress);
           var toWork = events[eventIndex - 1].travelFrom.find(t => t.destination === app.workAddress);
-          if (moment(toWork.arrive).isSameOrAfter(workEnds)) {
+          if (toWork && moment(toWork.arrive).isSameOrAfter(workEnds)) {
             // no point going back to work, go straight home
             travel = {
               ...travel,
@@ -526,8 +526,8 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
       if (events.length > eventIndex && events[eventIndex].travelTo) {
         var fromHome = events[eventIndex].travelTo.find(t => t.origin === app.homeAddress);
         var fromWork = events[eventIndex].travelTo.find(t => t.origin === app.workAddress);
-        if (startAddress === app.homeAddress) {
-          if (moment(fromWork.leave).isAfter(workStarts)) {
+        if (startAddress === app.homeAddress && app.homeAddress !== "") {
+          if (fromWork && moment(fromWork.leave).isAfter(workStarts)) {
             // there's time to go to work first
             travel = {
               ...travel,
@@ -552,7 +552,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
           }
         } else if (startAddress !== app.workAddress && eventIndex > 0 && events[eventIndex - 1].travelFrom) {
           var toWork = events[eventIndex - 1].travelFrom.find(t => t.destination === app.workAddress);
-          if (toWork.arrive.isSameOrAfter(fromWork.leave)) {
+          if (toWork && moment(toWork.arrive).isSameOrAfter(fromWork.leave)) {
             // go straight to the next place you need to be at
             travelFrom = events[eventIndex - 1].travelFrom.find(t => originalAddresses(t.destination).includes(eventAddress));
             if (travelFrom) {
@@ -569,7 +569,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
               // note change to address
               return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex);
             }
-          } else {
+          } else if (toWork) {
             // go back to work before travelling on
             travel = {
               ...travel,
