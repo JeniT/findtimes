@@ -49,6 +49,7 @@ function handleClientLoad() {
   // init pickers
   M.Datepicker.init(document.getElementById('after'), {
     setDefaultDate: true,
+    minDate: new Date(),
     onClose: function(e) {
       app.searchFrom = this.date;
     }
@@ -176,10 +177,8 @@ Vue.component('hold-listing-collapsible', {
           <span class="new badge" data-badge-caption="held slots">{{events.length}}</span>
         </div>
         <div class="collapsible-body">
-          <div v-if="loading">
-            <div class="progress"><div class="indeterminate"></div></div>
-          </div>
-          <div v-else>
+          <div class="progress" v-bind:class="{hide: !loading}"><div class="indeterminate"></div></div>
+          <div v-bind:class="{hide: loading}">
               <div class="right-align">
                 <a v-bind:href="'#' + encodeURIComponent(summary)" class="btn-flat modal-trigger">Summary</a>
               </div>
@@ -306,8 +305,16 @@ Vue.component('event-collection-item', {
     allDay: function() {
       return this.event.start.dateTime === undefined;
     },
-    desiredDuration: function() {
-      return moment(this.event.end.dateTime).diff(this.event.start.dateTime, 'minutes') === app.lasting;
+    isDesiredDuration: function() {
+      var currentDuration = moment(this.event.end.dateTime).diff(this.event.start.dateTime, 'minutes');
+      if (this.isSlot) {
+        return currentDuration === app.lasting;
+      } else if (this.holding) {
+        var desiredDuration = Number.parseInt(this.event.extendedProperties.private.findtimesDuration);
+        return currentDuration === desiredDuration;
+      } else {
+        return true;
+      }
     },
     organizer: function() {
       if (this.event.organizer) {
@@ -431,6 +438,9 @@ Vue.component('event-collection-item', {
           end.format('HH:mm');
       }
     },
+    formattedStartTime: function() {
+      return moment(this.event.start.dateTime).format('HH:mm');
+    },
     formattedTravelMode: function() {
       switch (this.event.mode) {
         case "walking":
@@ -453,8 +463,41 @@ Vue.component('event-collection-item', {
 
     var tooltipped = this.$el.querySelectorAll('.tooltipped');
     M.Tooltip.init(tooltipped);
+
+    var eventCollectionItem = this;
+    var timepickers = this.$el.querySelectorAll('.timepicker');
+    M.Timepicker.init(timepickers, {
+      twelveHour: false,
+      autoClose: true,
+      container: '#manage',
+      defaultTime: moment(eventCollectionItem.event.start.dateTime).format('HH:mm'),
+      onCloseEnd: function() {
+        if (!this.time) return;
+        var oldStart = eventCollectionItem.event.start.dateTime;
+        var newStart = timeOnDay(oldStart, this.time);
+        var oldEnd = eventCollectionItem.event.end.dateTime;
+        var newEnd = moment(newStart).add({ minutes: app.lasting });
+        if (newStart.isBefore(oldStart) || newEnd.isAfter(oldEnd)) {
+          M.toast({ html: 'Time must be between ' + moment(oldStart).format('HH:mm') + ' and ' + moment(oldEnd).format('HH:mm') });
+        } else {
+          eventCollectionItem.event.start.dateTime = newStart;
+          eventCollectionItem.event.end.dateTime = newEnd;
+          if (this.$el.hasClass('hold')) {
+            eventCollectionItem.hold('all');
+          } else if (this.$el.hasClass('confirm')) {
+            eventCollectionItem.confirm();
+          } else {
+            eventCollectionItem.book('all');
+          }
+        }
+      }
+    });
   },
   methods: {
+    openTimepicker: function(context) {
+      var timepicker = this.$el.querySelector('.timepicker.' + context);
+      timepicker.M_Timepicker.open();
+    },
     updateAttendance: function(newResponseStatus) {
       var event = this;
       gapi.client.calendar.events.get({
@@ -510,6 +553,8 @@ Vue.component('event-collection-item', {
           'calendarId': 'primary',
           'eventId': event.event.id,
           'summary': newSummary,
+          'start': event.event.start,
+          'end': event.event.end,
           'status': 'confirmed',
           'attendees': attendees,
           'extendedProperties': {
@@ -555,6 +600,8 @@ Vue.component('event-collection-item', {
             console.log(error);
           });
           event.$emit('updated', event.event);
+        }, function(error) {
+          console.log(error);
         });
       });
     },
@@ -580,13 +627,14 @@ Vue.component('event-collection-item', {
       var holdEvent = {
         calendarId: 'primary',
         summary: "[HOLD] " + (app.summary || "reserved"),
-        start: extent === 'all' || extent === 'start' ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
-        end: extent === 'all' || extent === 'end' ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
+        start: (extent === 'all' || extent === 'start') ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
+        end: (extent === 'all' || extent === 'end') ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
         status: "tentative",
         extendedProperties: {
           'private': {
             findtimesHolding: true,
-            findtimesInvite: app.invite.join(',')
+            findtimesInvite: app.invite.join(','),
+            findtimesDuration: app.lasting
           }
         }
       };
@@ -601,8 +649,8 @@ Vue.component('event-collection-item', {
       var bookEvent = {
         calendarId: 'primary',
         summary: (app.summary || "reserved"),
-        start: extent === 'all' || extent === 'start' ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
-        end: extent === 'all' || extent === 'end' ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
+        start: (extent === 'all' || extent === 'start') ? this.event.start : { dateTime: moment(this.event.end.dateTime).subtract({ minutes: app.lasting }).toISOString() },
+        end: (extent === 'all' || extent === 'end') ? this.event.end : { dateTime: moment(this.event.start.dateTime).add({ minutes: app.lasting }).toISOString() },
         status: "confirmed",
       };
       var attendees = [];
@@ -646,7 +694,7 @@ Vue.component('event-collection-item', {
       <div v-if="isSlot || isTravel">
         <div v-if="isSlot">
           <div class="secondary-content">
-            <div v-if="desiredDuration">
+            <div v-if="isDesiredDuration">
               <a href="#" class="btn-flat orange white-text waves-effect waves-light" 
                 v-on:click.prevent="hold">Hold</a>
               <a href="#" class="btn-flat teal white-text waves-effect waves-light"
@@ -657,15 +705,19 @@ Vue.component('event-collection-item', {
                 v-bind:data-target='context + "hold" + event.id'>Hold</a>
               <ul v-bind:id='context + "hold" + event.id' class='dropdown-content'>
                 <li><a href="" v-on:click.prevent="hold('all')"><i class="material-icons">select_all</i>Whole slot</a></li>
+                <li><a href="" v-on:click.prevent="openTimepicker('hold')"><i class="material-icons">access_time</i>Start from...</a></li> 
                 <li><a href="" v-on:click.prevent="hold('start')"><i class="material-icons">vertical_align_top</i>At start</a></li>
                 <li><a href="" v-on:click.prevent="hold('end')"><i class="material-icons">vertical_align_bottom</i>At end</a></li>
               </ul>
+              <input type="text" class="timepicker hold hide" placeholder="" v-bind:value="formattedStartTime">
               <a href="#" class="dropdown-trigger btn-flat teal white-text waves-effect waves-light"
                 v-bind:data-target='context + "book" + event.id'>Book</a>
               <ul v-bind:id='context + "book" + event.id' class='dropdown-content'>
+                <li><a href="" v-on:click.prevent="openTimepicker('book')"><i class="material-icons">access_time</i>Start from...</a></li> 
                 <li><a href="" v-on:click.prevent="book('start')"><i class="material-icons">vertical_align_top</i>At start</a></li>
                 <li><a href="" v-on:click.prevent="book('end')"><i class="material-icons">vertical_align_bottom</i>At end</a></li>
               </ul>
+              <input type="text" class="timepicker book hide" placeholder="" v-bind:value="formattedStartTime">
             </div>
           </div>
           <span class="title">Available</span>
@@ -695,7 +747,8 @@ Vue.component('event-collection-item', {
           <ul v-bind:id='context + "edit" + event.id' class='dropdown-content'>
             <li><a v-bind:href="event.htmlLink" target="_new"><i class="material-icons">open_in_new</i>View</a></li>
             <li v-if="holding">
-              <a href="" v-on:click.prevent="confirm"><i class="material-icons">event_available</i>Confirm</a>
+              <a v-if="isDesiredDuration" href="" v-on:click.prevent="confirm"><i class="material-icons">event_available</i>Confirm</a>
+              <a v-else href="" v-on:click.prevent="openTimepicker('confirm')"><i class="material-icons">event_available</i>Confirm at...</a>
             </li>
             <li v-if="event.attendees !== undefined">
               <a v-if="attending != 'accepted'" href="" v-on:click.prevent="accept"><i class="material-icons">event_available</i>Accept</a>
@@ -709,6 +762,7 @@ Vue.component('event-collection-item', {
               <a href="" v-on:click.prevent="deleteEvent"><i class="material-icons">delete</i>Delete</a>
             </li>
           </ul>
+          <input type="text" class="timepicker confirm hide" placeholder="" v-bind:value="formattedStartTime">
         </div>            
         <span class="title">
           <span v-if="event.summary">
