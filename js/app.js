@@ -984,8 +984,8 @@ var app = new Vue({
 
     var dropdowns = document.querySelectorAll('.dropdown-trigger');
     M.Dropdown.init(dropdowns, {
-      constrainWidth: false,
-      hover: true
+      constrainWidth: true,
+      hover: false
     });
 
     var timepickerOpts = {
