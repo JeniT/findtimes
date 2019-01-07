@@ -776,6 +776,10 @@ var app = new Vue({
     dates: [],
     connected: false,
     calendar: {},
+    defaultStartTime: searchDefaults.startTime,
+    defaultEndTime: searchDefaults.endTime,
+    defaultWithin: searchDefaults.within,
+    defaultLasting: searchDefaults.lasting,
     summary: urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary,
     searchFromDate: urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : searchDefaults.searchFromDate,
     lasting: urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting,
@@ -805,10 +809,6 @@ var app = new Vue({
     travelToAddress: moment.duration(0),
     travelFromAddress: moment.duration(0),
     showMoreSearchOptions: false,
-    defaultStartTime: searchDefaults.startTime,
-    defaultEndTime: searchDefaults.endTime,
-    defaultWithin: searchDefaults.within,
-    defaultLasting: searchDefaults.lasting,
   },
   computed: {
     ownCalendar: function() {
@@ -926,6 +926,7 @@ var app = new Vue({
     },
   },
   mounted: function() {
+    var app = this;
     this.defaultStartTime = window.localStorage.getItem('defaultStartTime') || this.defaultStartTime;
     this.defaultEndTime = window.localStorage.getItem('defaultEndTime') || this.defaultEndTime;
     this.defaultWithin = window.localStorage.getItem('defaultWithin') || this.defaultWithin;
@@ -951,9 +952,13 @@ var app = new Vue({
     });
 
     var selects = document.querySelectorAll('select');
+    selects.forEach(function(select) {
+      var id = select.id;
+      select.querySelectorAll('option').forEach(o => o.selected = app[id].toString() === o.value);
+    });
     var formSelects = M.FormSelect.init(selects, {
       dropdownOptions: {
-        constrainWidth: false,
+        constrainWidth: true,
         hover: false
       }
     });
@@ -982,10 +987,15 @@ var app = new Vue({
     var tooltipped = document.querySelectorAll('.tooltipped');
     M.Tooltip.init(tooltipped);
 
-    var dropdowns = document.querySelectorAll('.dropdown-trigger');
+    // var dropdowns = document.querySelectorAll('form .dropdown-trigger');
+    // M.Dropdown.init(dropdowns, {
+    //   constrainWidth: true,
+    //   hover: false
+    // });
+    var dropdowns = document.querySelectorAll('nav .dropdown-trigger');
     M.Dropdown.init(dropdowns, {
-      constrainWidth: true,
-      hover: false
+      constrainWidth: false,
+      hover: true
     });
 
     var timepickerOpts = {
