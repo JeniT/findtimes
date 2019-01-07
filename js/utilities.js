@@ -538,7 +538,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
             }
             events.splice(eventIndex, 0, travel);
             return addSlotsBetween(moment(travel.end.dateTime), end, duration, travel.destination, events, eventIndex + 1);
-          } else {
+          } else if (fromHome) {
             // go straight there, even if it means leaving home a little later than usual
             travel = {
               ...travel,
@@ -549,6 +549,9 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
             events.splice(eventIndex, 0, travel);
             // skip to after the event
             return addSlotsBetween(moment(eventEnds), end, duration, eventAddress, events, eventIndex + 2);
+          } else {
+            // assume a magical transporter that takes you where you're going instantaneously!
+            return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex);
           }
         } else if (startAddress !== app.workAddress && eventIndex > 0 && events[eventIndex - 1].travelFrom) {
           var toWork = events[eventIndex - 1].travelFrom.find(t => t.destination === app.workAddress);
