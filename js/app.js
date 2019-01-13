@@ -217,8 +217,11 @@ Vue.component('day-expandable', {
         events = events.sort(sortEvents);
         events = events.filter(function(e, i) { if ((i == 0) || (events[i - 1].id !== e.id)) return e; });
         events = addSlotsBetween(dayStart, dayEnd, duration, app.homeAddress, events).sort(sortEvents);
-        // dayExpandable.events = events.filter(e => searchStart.isBefore(e.start.dateTime || e.start.date) && searchEnd.isAfter(e.end.dateTime || e.end.date));
-        dayExpandable.events = events;
+        dayExpandable.events = events.filter(e =>
+          searchStart.isBefore(e.end.dateTime || e.end.date) &&
+          searchEnd.isAfter(e.start.dateTime || e.start.date)
+        );
+        // dayExpandable.events = events;
         if (propagate) {
           dayExpandable.$emit('updated');
         }
@@ -782,8 +785,8 @@ var app = new Vue({
     defaultLasting: searchDefaults.lasting,
     summary: urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary,
     searchFromDate: urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : searchDefaults.searchFromDate,
+    within: urlParams.has('within') ? urlParams.get('within') : this.defaultWithin,
     lasting: urlParams.has('lasting') ? Number.parseInt(urlParams.get('lasting')) : this.defaultLasting,
-    within: searchDefaults.within,
     invite: urlParams.has('invite') ? (urlParams.get('invite') === "" ? [] : urlParams.get('invite').split(",")) : searchDefaults.invite,
     ignore: [], // people on the invite list to ignore when fetching calendars (because you don't have access)
     address: urlParams.has('address') ? urlParams.get('address') : this.workAddress,
