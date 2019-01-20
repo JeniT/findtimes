@@ -135,6 +135,37 @@
                   <option value="120" v-bind:selected="defaultLasting === 120 ? 'selected' : ''">2 hours</option>
                 </select>
               </div>
+              <h5 class="col s12">Priorities</h5>
+              <div class="input-field col s12 m4">
+                <label for="defaultPriority" class="active">Default event priority</label>
+                <select id="defaultPriority" v-on:change="setValueFromSelect">
+                  <option value="1" v-bind:selected="defaultPriority === 1 ? 'selected' : ''">Highest</option>
+                  <option value="2" v-bind:selected="defaultPriority === 2 ? 'selected' : ''">High</option>
+                  <option value="3" v-bind:selected="defaultPriority === 3 ? 'selected' : ''">Normal</option>
+                  <option value="4" v-bind:selected="defaultPriority === 4 ? 'selected' : ''">Low</option>
+                  <option value="5" v-bind:selected="defaultPriority === 5 ? 'selected' : ''">Lowest</option>
+                </select>
+              </div>
+              <div class="input-field col s12 m4">
+                <label for="defaultOptionalPriority" class="active">Optional event priority</label>
+                <select id="defaultOptionalPriority" v-on:change="setValueFromSelect">
+                  <option value="1" v-bind:selected="defaultOptionalPriority === 1 ? 'selected' : ''">Highest</option>
+                  <option value="2" v-bind:selected="defaultOptionalPriority === 2 ? 'selected' : ''">High</option>
+                  <option value="3" v-bind:selected="defaultOptionalPriority === 3 ? 'selected' : ''">Normal</option>
+                  <option value="4" v-bind:selected="defaultOptionalPriority === 4 ? 'selected' : ''">Low</option>
+                  <option value="5" v-bind:selected="defaultOptionalPriority === 5 ? 'selected' : ''">Lowest</option>
+                </select>
+              </div>
+              <div class="input-field col s12 m4">
+                <label for="defaultNeedsActionPriority" class="active">Unconfirmed event priority</label>
+                <select id="defaultNeedsActionPriority" v-on:change="setValueFromSelect">
+                  <option value="1" v-bind:selected="defaultNeedsActionPriority === 1 ? 'selected' : ''">Highest</option>
+                  <option value="2" v-bind:selected="defaultNeedsActionPriority === 2 ? 'selected' : ''">High</option>
+                  <option value="3" v-bind:selected="defaultNeedsActionPriority === 3 ? 'selected' : ''">Normal</option>
+                  <option value="4" v-bind:selected="defaultNeedsActionPriority === 4 ? 'selected' : ''">Low</option>
+                  <option value="5" v-bind:selected="defaultNeedsActionPriority === 5 ? 'selected' : ''">Lowest</option>
+                </select>
+              </div>
               <h5 class="col s12">Travel times</h5>
               <!--<div class="input-field col s6 xl3">-->
               <!--  <div>Include travel times</div>-->
@@ -259,6 +290,16 @@
                       <div class="input-field col s6">
                         <input placeholder="" id="commuteFromAddress" type="text" v-model.trim="commuteFromAddress" disabled>
                         <label for="commuteFromAddress">Latest departure</label>
+                      </div>
+                      <div class="input-field col s12">
+                        <label for="priority" class="active">Priority</label>
+                        <select id="priority" v-on:change="setValueFromSelect">
+                          <option value="1" v-bind:selected="priority === 1 ? 'selected' : ''">Highest</option>
+                          <option value="2" v-bind:selected="priority === 2 ? 'selected' : ''">High</option>
+                          <option value="3" v-bind:selected="priority === 3 ? 'selected' : ''">Normal</option>
+                          <option value="4" v-bind:selected="priority === 4 ? 'selected' : ''">Low</option>
+                          <option value="5" v-bind:selected="priority === 5 ? 'selected' : ''">Lowest</option>
+                        </select>
                       </div>
                       <div class="input-field col s6">
                         <input type="text" id="startTime" class="timepicker" v-bind:value="startTime" placeholder="">

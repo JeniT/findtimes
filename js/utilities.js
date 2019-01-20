@@ -309,6 +309,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
   var attending = "accepted";
   var workStarts = timeOnDay(start, app.defaultStartTime);
   var workEnds = timeOnDay(start, app.defaultEndTime);
+  var eventPriority = 1;
   if (start.isSameOrAfter(end)) {
     return events;
   }
@@ -322,14 +323,18 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
     if (events[eventIndex].attendees) {
       var ownAttendance = events[eventIndex].attendees.find(attendee => attendee.self);
       attending = ownAttendance === undefined ? "accepted" : ownAttendance.responseStatus;
+      if (attending === "needsAction") {
+        eventPriority = ownAttendance && ownAttendance.optional ? app.defaultOptionalPriority : app.defaultNeedsActionPriority;
+      }
       if (events[eventIndex].attendees.find(attendee => attendee.resource)) {
         eventAddress = app.workAddress;
       }
     }
-    // skip / ignore events we're not attending
+    // skip / ignore events we're not attending or that are lower priority than this one
     if (events[eventIndex].transparency === "transparent" ||
       attending === "declined" ||
-      start.isAfter(eventEnds)) {
+      start.isAfter(eventEnds) ||
+      eventPriority > app.priority) {
       return addSlotsBetween(start, end, duration, startAddress, events, eventIndex + 1);
     }
     if (startAddress === app.homeAddress && eventAddress === app.workAddress && start.format('HH:mm') === app.commuteStartTime) {

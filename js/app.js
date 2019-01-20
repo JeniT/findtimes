@@ -197,7 +197,14 @@ Vue.component('day-expandable', {
       return moment(this.date).format('ddd MMM DD');
     },
     numberOfSlots: function() {
-      return this.events.reduce((count, event) => count + (event.kind === APP_SLOT_KIND), 0);
+      return this.events.reduce(function(count, event) {
+        var slots = 0;
+        if (event.kind === APP_SLOT_KIND) {
+          var length = moment(event.end.dateTime).diff(event.start.dateTime, 'minutes');
+          slots = Math.ceil(length / app.lasting);
+        }
+        return count + slots;
+      }, 0);
     },
     numberOfHeldSlots: function() {
       return this.events.reduce((count, event) => count + (event.extendedProperties !== undefined && event.extendedProperties.private !== undefined && (event.extendedProperties.private.findtimesHolding === "true")), 0);
@@ -771,7 +778,10 @@ var searchDefaults = {
   invite: [],
   startTime: "09:30",
   endTime: "17:00",
-  address: ""
+  address: "",
+  priority: 3,
+  optionalPriority: 5,
+  needsActionPriority: 4,
 };
 var app = new Vue({
   el: '#app',
@@ -783,6 +793,9 @@ var app = new Vue({
     defaultEndTime: searchDefaults.endTime,
     defaultWithin: searchDefaults.within,
     defaultLasting: searchDefaults.lasting,
+    defaultPriority: searchDefaults.priority,
+    defaultOptionalPriority: searchDefaults.optionalPriority,
+    defaultNeedsActionPriority: searchDefaults.needsActionPriority,
     summary: urlParams.has('summary') ? urlParams.get('summary') : searchDefaults.summary,
     searchFromDate: urlParams.has('after') ? moment(urlParams.get('after')).startOf('day') : searchDefaults.searchFromDate,
     within: urlParams.has('within') ? urlParams.get('within') : this.defaultWithin,
@@ -790,6 +803,7 @@ var app = new Vue({
     invite: urlParams.has('invite') ? (urlParams.get('invite') === "" ? [] : urlParams.get('invite').split(",")) : searchDefaults.invite,
     ignore: [], // people on the invite list to ignore when fetching calendars (because you don't have access)
     address: urlParams.has('address') ? urlParams.get('address') : this.workAddress,
+    priority: urlParams.has('priority') ? Number.parseInt(urlParams.get('priority')) : this.defaultPriority,
     checkAddress: false,
     invalidAddress: false,
     startTime: searchDefaults.startTime,
@@ -842,6 +856,7 @@ var app = new Vue({
         if (this.endTime !== this.defaultEndTime) params.push('endTime=' + this.endTime);
         if (this.invite.length > 0) params.push('invite=' + this.invite.map((i) => encodeURIComponent(i)).join(","));
         if (this.address !== undefined && this.address !== "" && this.address !== this.workAddress) params.push('address=' + encodeURIComponent(this.address));
+        if (this.priority !== this.defaultPriority) params.push('priority=' + this.priority);
         return params.length > 0 ? ("?" + params.join('&')) : "";
       },
       set: function(url) {
@@ -854,6 +869,7 @@ var app = new Vue({
         this.startTime = urlParams.has('startTime') ? urlParams.get('startTime') : this.defaultStartTime;
         this.endTime = urlParams.has('endTime') ? urlParams.get('endTime') : this.defaultEndTime;
         this.address = urlParams.has('address') ? urlParams.get('address') : this.workAddress;
+        this.priority = urlParams.has('priority') ? Number.parseInt(urlParams.get('priority')) : this.defaultPriority;
       }
     }
   },
@@ -927,6 +943,18 @@ var app = new Vue({
         this.lasting = newValue;
       }
     },
+    defaultPriority: function(newValue, oldValue) {
+      window.localStorage.setItem('defaultPriority', newValue);
+      if (newValue !== oldValue && this.priority === oldValue) {
+        this.priority = newValue;
+      }
+    },
+    defaultOptionalPriority: function(newValue, oldValue) {
+      window.localStorage.setItem('defaultOptionalPriority', newValue);
+    },
+    defaultNeedsActionPriority: function(newValue, oldValue) {
+      window.localStorage.setItem('defaultNeedsActionPriority', newValue);
+    }
   },
   mounted: function() {
     var app = this;
@@ -934,6 +962,9 @@ var app = new Vue({
     this.defaultEndTime = window.localStorage.getItem('defaultEndTime') || this.defaultEndTime;
     this.defaultWithin = window.localStorage.getItem('defaultWithin') || this.defaultWithin;
     this.defaultLasting = Number.parseInt(window.localStorage.getItem('defaultLasting')) || this.defaultLasting;
+    this.defaultPriority = Number.parseInt(window.localStorage.getItem('defaultPriority')) || this.defaultPriority;
+    this.defaultOptionalPriority = Number.parseInt(window.localStorage.getItem('defaultOptionalPriority')) || this.defaultOptionalPriority;
+    this.defaultNeedsActionPriority = Number.parseInt(window.localStorage.getItem('defaultNeedsActionPriority')) || this.defaultNeedsActionPriority;
     this.commuteStartTime = window.localStorage.getItem('commuteStartTime') || this.commuteStartTime;
     this.commuteEndTime = window.localStorage.getItem('commuteEndTime') || this.commuteEndTime;
 
@@ -942,6 +973,7 @@ var app = new Vue({
     this.startTime = urlParams.has('startTime') ? urlParams.get('startTime') : this.defaultStartTime;
     this.endTime = urlParams.has('endTime') ? urlParams.get('endTime') : this.defaultEndTime;
     this.address = urlParams.has('address') ? urlParams.get('address') : this.workAddress;
+    this.priority = urlParams.has('priority') ? Number.parseInt(urlParams.get('priority')) : this.defaultPriority;
 
     this.showMoreSearchOptions = this.invite.length > 0 || this.startTime !== this.defaultStartTime || this.endTime !== this.defaultEndTime || this.address !== this.workAddress;
 
