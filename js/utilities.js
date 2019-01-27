@@ -302,6 +302,45 @@ function timeOnDay(day, time) {
   return moment(day).startOf('day').add({ hours: time[0], minutes: time[1] });
 }
 
+function eventOwnAttendance(event) {
+  if (event.attendees) {
+    return event.attendees.find(attendee => attendee.self);
+  } else {
+    return undefined;
+  }
+}
+
+function eventAttending(event) {
+  var attending = "accepted";
+  var ownAttendance = eventOwnAttendance(event);
+  if (event.attendees) {
+    attending = ownAttendance !== undefined ? ownAttendance.responseStatus : "accepted";
+  } else if (!event.calendarId === 'primary') {
+    return "other";
+  }
+  return attending;
+}
+
+function eventPriority(event) {
+  if (event.extendedProperties &&
+    event.extendedProperties.private &&
+    event.extendedProperties.private.findtimesPriority) {
+    return Number.parseInt(event.extendedProperties.private.findtimesPriority);
+  } else if (event.transparency === "transparent") {
+    return 5;
+  } else {
+    var attending = eventAttending(event);
+    if (attending === "needsAction") {
+      var ownAttendance = eventOwnAttendance(event);
+      return ownAttendance && ownAttendance.optional ? app.defaultOptionalPriority : app.defaultNeedsActionPriority;
+    } else if (attending === "tentative") {
+      return 3;
+    } else {
+      return 1;
+    }
+  }
+}
+
 function addSlotsBetween(start, end, duration, startAddress, events, eventIndex = 0) {
   var eventStarts, eventEnds, eventAddress;
   var morningCommute = false;
@@ -309,7 +348,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
   var attending = "accepted";
   var workStarts = timeOnDay(start, app.defaultStartTime);
   var workEnds = timeOnDay(start, app.defaultEndTime);
-  var eventPriority = 1;
+  var priority = 1;
   if (start.isSameOrAfter(end)) {
     return events;
   }
@@ -317,15 +356,12 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
     eventStarts = events[eventIndex].start.dateTime || (events[eventIndex].start.date + "T00:00:00");
     eventEnds = events[eventIndex].end.dateTime || (events[eventIndex].end.date + "T00:00:00");
     eventAddress = eventLocation(events[eventIndex]);
+    priority = eventPriority(events[eventIndex]);
+    attending = eventAttending(events[eventIndex]);
     // if (start.isAfter(eventStarts)) {
     //   return addSlotsBetween(start, end, duration, eventAddress, events, eventIndex + 1);
     // }
     if (events[eventIndex].attendees) {
-      var ownAttendance = events[eventIndex].attendees.find(attendee => attendee.self);
-      attending = ownAttendance === undefined ? "accepted" : ownAttendance.responseStatus;
-      if (attending === "needsAction") {
-        eventPriority = ownAttendance && ownAttendance.optional ? app.defaultOptionalPriority : app.defaultNeedsActionPriority;
-      }
       if (events[eventIndex].attendees.find(attendee => attendee.resource)) {
         eventAddress = app.workAddress;
       }
@@ -334,7 +370,7 @@ function addSlotsBetween(start, end, duration, startAddress, events, eventIndex 
     if (events[eventIndex].transparency === "transparent" ||
       attending === "declined" ||
       start.isAfter(eventEnds) ||
-      eventPriority > app.priority) {
+      priority > app.priority) {
       return addSlotsBetween(start, end, duration, startAddress, events, eventIndex + 1);
     }
     if (startAddress === app.homeAddress && eventAddress === app.workAddress && start.format('HH:mm') === app.commuteStartTime) {

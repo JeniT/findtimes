@@ -11,6 +11,9 @@
 /* global sortEvents */
 /* global addSlotsBetween */
 /* global calculateTravelTime */
+/* global eventOwnAttendance */
+/* global eventAttending */
+/* global eventPriority */
 
 // Client ID and API key from the Developer Console
 var CLIENT_ID = '580782451843-c3hia6gsl157hihk25tl4cqoil3gpi3u.apps.googleusercontent.com';
@@ -325,7 +328,9 @@ Vue.component('event-collection-item', {
     },
     includesInvitees: function() {
       var attendees = this.event.attendees;
-      if (attendees) {
+      if (app.invite.length === 0) {
+        return false;
+      } else if (attendees) {
         var check = attendees.concat([app.ownEmail]);
         return app.invite.every(person => check.some(a => a.email === person));
       } else {
@@ -338,15 +343,38 @@ Vue.component('event-collection-item', {
     peopleTooltip: function() {
       return 'Existing meeting with ' + app.invite.join(', ') + (!this.onlyInvitees ? ' and others' : '');
     },
+    ownAttendance: function() {
+      return eventOwnAttendance(this.event);
+    },
     attending: function() {
-      var attending = "accepted";
-      if (this.event.attendees) {
-        var ownAttendance = this.event.attendees.find(attendee => attendee.self);
-        attending = ownAttendance !== undefined ? ownAttendance.responseStatus : "accepted";
-      } else if (!this.ownEvent) {
-        return "other";
+      return eventAttending(this.event);
+    },
+    priority: {
+      get: function() {
+        return eventPriority(this.event);
+      },
+      set: function(value) {
+        var oldValue = this.priority;
+        if (!this.isSlot && value !== oldValue) {
+          if (!this.event.extendedProperties) this.event.extendedProperties = {};
+          if (!this.event.extendedProperties.private) this.event.extendedProperties.private = {};
+          this.event.extendedProperties.private.findtimesPriority = value;
+          var newEvent = {
+            'calendarId': 'primary',
+            'eventId': this.event.id,
+            'extendedProperties': {
+              'private': {
+                'findtimesPriority': value
+              }
+            }
+          };
+          var event = this;
+          gapi.client.calendar.events.patch(newEvent).then(function(response) {
+            event.$emit('updated', event.event);
+          });
+        }
+        return;
       }
-      return attending;
     },
     holding: function() {
       return this.event.extendedProperties &&
@@ -728,6 +756,33 @@ Vue.component('event-collection-item', {
           <span v-if="includesInvitees && !onlyInvitees" class="btn-flat tooltipped" data-position="left" 
             v-bind:data-tooltip="peopleTooltip" v-bind:class="classes">
             <i class="material-icons">people_outline</i>
+          </span>
+          <span v-if="attending != 'declined'">
+            <a class='dropdown-trigger btn-flat' v-bind:class="classes" href='#' v-bind:data-target='context + "priority" + event.id'>
+              <i class="material-icons">looks_{{priority === 1 ? 'one' : (priority === 2 ? 'two' : priority)}}</i>
+            </a>
+            <ul v-bind:id='context + "priority" + event.id' class='dropdown-content'>
+              <li>
+                <span v-if="priority === 1" class="grey-text"><i class="material-icons">looks_one</i> Highest</span>
+                <a v-else v-on:click.prevent="priority = 1"><i class="material-icons">looks_one</i> Highest</a>
+              </li>
+              <li>
+                <span v-if="priority === 2" class="grey-text"><i class="material-icons">looks_two</i> High</span>
+                <a v-else v-on:click.prevent="priority = 2"><i class="material-icons">looks_two</i> High</a>
+              </li>
+              <li>
+                <span v-if="priority === 3" class="grey-text"><i class="material-icons">looks_3</i> Normal</span>
+                <a v-else v-on:click.prevent="priority = 3"><i class="material-icons">looks_3</i> Normal</a>
+              </li>
+              <li>
+                <span v-if="priority === 4" class="grey-text"><i class="material-icons">looks_4</i> Low</span>
+                <a v-else v-on:click.prevent="priority = 4"><i class="material-icons">looks_4</i> Low</a>
+              </li>
+              <li>
+                <span v-if="priority === 5" class="grey-text"><i class="material-icons">looks_5</i> Lowest</span>
+                <a v-else v-on:click.prevent="priority = 5"><i class="material-icons">looks_5</i> Lowest</a>
+              </li>
+            </ul>
           </span>
           <a class='dropdown-trigger btn-flat' v-bind:class="classes" href='#' v-bind:data-target='context + "edit" + event.id'>
             <i class="material-icons">more_vert</i>
