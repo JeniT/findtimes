@@ -16,6 +16,12 @@
   </head>
 
   <body>
+    <div class="tap-target" data-target="login">
+      <div class="tap-target-content">
+        <h5>Log in</h5>
+        <p>To find times in your calendar, you have to log in to a Google Calendar account.</p>
+      </div>
+    </div>
     <div id="app">
       <nav>
         <div class="nav-wrapper teal">
@@ -33,7 +39,7 @@
               </ul>
             </li>
             <li v-bind:class="{hide: connected}">
-              <a v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Log in</a>
+              <a id="login" v-on:click="connect" class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>Log in</a>
             </li>
           </ul>
         </div>

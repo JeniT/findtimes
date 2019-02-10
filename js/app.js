@@ -1123,6 +1123,13 @@ var app = new Vue({
         app.refresh();
       }
     });
+
+    var tapTarget = M.TapTarget.init(document.querySelectorAll('.tap-target'), {
+      onClose: function() {
+        app.connect();
+      }
+    });
+    tapTarget[0].open();
   },
   methods: {
     connect: function(e) {
